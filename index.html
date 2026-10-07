@@ -1,0 +1,3209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CyberSpire 3D: Claim All & Mastery</title>
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22CyberSpire%203D%22%2C%22short_name%22%3A%22CyberSpire%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23020617%22%2C%22theme_color%22%3A%22%23020617%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20512%20512'%253E%253Crect%20fill%3D'%2523020617'%20width%3D'512'%20height%3D'512'%2F%253E%253Ctext%20x%3D'256'%20y%3D'330'%20font-size%3D'280'%20text-anchor%3D'middle'%20fill%3D'%252338bdf8'%253E%25E2%259A%25A1%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%22%7D%5D%7D">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            background-color: #020617;
+            color: #f8fafc;
+            overflow: hidden;
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        #canvas-container {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+        }
+        .floating-text {
+            position: absolute;
+            font-weight: 900;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            z-index: 50;
+            text-shadow: 0 0 12px currentColor;
+        }
+        @keyframes floatUp {
+            0% { transform: translate(-50%, 0) scale(0.8); opacity: 1; }
+            50% { transform: translate(-50%, -35px) scale(1.3); opacity: 1; }
+            100% { transform: translate(-50%, -70px) scale(1); opacity: 0; }
+        }
+        .shake {
+            animation: shake 0.35s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0); }
+            20%, 80% { transform: translate3d(3px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .toast-item {
+            animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes toastIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body id="app-body" class="h-screen w-screen relative overflow-hidden">
+
+    <div id="canvas-container"></div>
+
+    <div id="toast-container" class="fixed bottom-3 right-3 z-50 flex flex-col gap-2 pointer-events-none w-72 max-w-[85vw]"></div>
+
+    <!-- Модальное окно Офлайн-дохода -->
+    <div id="offline-modal" onclick="if(event.target===this)closeOfflineModal()" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-sky-500/80 rounded-2xl p-4 max-w-xs w-full text-center flex flex-col gap-3 shadow-[0_0_40px_rgba(14,165,233,0.4)] animate-in fade-in zoom-in duration-200">
+            <div class="text-3xl">🛰️</div>
+            <h3 class="font-black text-sm uppercase tracking-wider text-sky-300">С возвращением, Директор!</h3>
+            <p class="text-xs text-slate-300" id="offline-modal-time">Станция работала автономно: 0 мин.</p>
+            <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex flex-col gap-1">
+                <span class="text-[10px] uppercase tracking-wider text-slate-400">Добыто энергии</span>
+                <span id="offline-modal-earned" class="text-2xl font-black text-emerald-400">+0 $</span>
+                <span id="offline-modal-eff" class="text-[9px] text-sky-400 font-mono">Эффективность: 20%</span>
+            </div>
+            <button onclick="closeOfflineModal()" class="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-95 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg transition-all">
+                Забрать прибыль
+            </button>
+        </div>
+    </div>
+
+    <!-- Модальное окно Ежедневных наград -->
+    <div id="daily-reward-modal" onclick="if(event.target===this)closeDailyRewardModal()" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-purple-500/80 rounded-3xl p-4 sm:p-5 max-w-sm w-full flex flex-col gap-3 shadow-[0_0_50px_rgba(192,132,252,0.35)] animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🎁</span>
+                    <span class="text-xs font-black uppercase text-purple-300 tracking-wider">Ежедневный транш</span>
+                </div>
+                <button onclick="closeDailyRewardModal()" class="text-slate-400 hover:text-white text-sm px-1.5 py-0.5 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+            </div>
+
+            <p class="text-[11px] text-slate-300 leading-tight">
+                Заходите каждый день и получайте нанокристаллы. На 7-й день выдаётся Квантовое ядро сингулярности!
+            </p>
+
+            <div id="daily-grid-container" class="grid grid-cols-4 gap-1.5 pt-1"></div>
+
+            <button id="claim-daily-btn" onclick="claimDailyReward()" class="w-full py-2.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 hover:opacity-95 active:scale-95 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg transition-all">
+                Забрать награду
+            </button>
+        </div>
+    </div>
+
+    <!-- Модальное окно Поддержки автора -->
+    <div id="author-support-modal" onclick="if(event.target===this)closeAuthorSupportModal()" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-amber-500/80 rounded-3xl p-5 max-w-sm w-full flex flex-col gap-3.5 shadow-[0_0_50px_rgba(245,158,11,0.35)] animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">💖</span>
+                    <span class="text-xs font-black uppercase text-amber-300 tracking-wider">Поддержка автора</span>
+                </div>
+                <button onclick="closeAuthorSupportModal()" class="text-slate-400 hover:text-white text-sm px-1.5 py-0.5 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+            </div>
+
+            <p class="text-[11px] text-slate-100 font-bold leading-relaxed">
+                Вы помогаете развивать все проекты и вдохновляете на новые проекты!
+            </p>
+
+            <p class="text-[10px] text-slate-400 leading-normal">
+                CyberSpire 3D создается с вниманием к каждой детали. Ваше участие позволяет развивать игру, выпускать регулярные обновления, новые 3D-модули и расширенные механики.
+            </p>
+
+            <div class="flex flex-col gap-2 pt-1">
+                <a id="author-boosty-btn" href="#" target="_blank" class="w-full py-2.5 px-3 bg-[#f15f2c] hover:bg-[#e05322] active:scale-95 text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition-all">
+                    <span>🟠</span> <span>Поддержать на Boosty</span>
+                </a>
+
+                <a id="author-da-btn" href="#" target="_blank" class="w-full py-2.5 px-3 bg-[#ff7700] hover:bg-[#eb6e00] active:scale-95 text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition-all">
+                    <span>🔔</span> <span>DonationAlerts</span>
+                </a>
+            </div>
+
+            <div class="bg-slate-950/80 rounded-xl p-2 border border-slate-800 text-[10px] text-amber-400/90 text-center font-mono">
+                Спасибо за вашу поддержку и вдохновение! ✨
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопка мобильного меню -->
+    <button id="mobile-menu-btn" onclick="toggleMobileSidebar()" class="sm:hidden fixed bottom-3 left-3 z-40 bg-slate-900/90 border border-slate-700/80 text-sky-400 font-bold px-3 py-2 rounded-xl shadow-2xl flex items-center gap-1.5 backdrop-blur-md active:scale-95 text-xs">
+        <span id="menu-icon">☰</span> <span>Инфраструктура</span>
+    </button>
+
+    <!-- ЛЕВАЯ ПАНЕЛЬ: МАГАЗИН И ИНФРАСТРУКТУРА -->
+    <aside id="shop-sidebar" class="fixed left-2 sm:left-3 top-2 sm:top-3 bottom-14 sm:bottom-3 w-[17.5rem] sm:w-84 md:w-88 z-30 bg-slate-900/95 sm:bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-2xl p-2.5 sm:p-3 shadow-2xl flex flex-col justify-between transition-transform duration-300 -translate-x-[110%] sm:translate-x-0">
+        <div>
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-[11px] font-black uppercase tracking-wider text-slate-300">База</span>
+                <div class="flex gap-1 items-center">
+                    <!-- ОТКРЫТАЯ КНОПКА +10M ВСЕХ ВАЛЮТ -->
+                    <button onclick="addMegaCheat()" class="text-[10px] text-amber-300 hover:text-amber-100 font-black px-2 py-0.5 rounded-lg bg-amber-950/80 border border-amber-600/80 active:scale-95 transition-all shadow" title="Начислить 10,000,000 всех валют">
+                        🚀 +10M ВСЁ
+                    </button>
+                    <button onclick="resetGame()" class="text-[10px] text-rose-400 hover:text-rose-200 font-bold px-2 py-0.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/70 border border-rose-800/60 active:scale-95 transition-all">
+                        Сброс
+                    </button>
+                </div>
+            </div>
+
+            <!-- Вкладки категорий -->
+            <div class="grid grid-cols-5 gap-0.5 p-0.5 bg-slate-950 rounded-xl border border-slate-800 text-[9px] font-bold">
+                <button id="tab-btn-income" onclick="switchTab('income')" class="py-1.5 rounded-lg bg-slate-800 text-emerald-400 shadow transition-all truncate text-center">
+                    💼 Доход
+                </button>
+                <button id="tab-btn-power" onclick="switchTab('power')" class="py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition-all truncate text-center">
+                    ⚡ Энергия
+                </button>
+                <button id="tab-btn-prestige" onclick="switchTab('prestige')" class="py-1.5 rounded-lg text-slate-400 hover:text-purple-300 transition-all truncate text-center">
+                    ⚛️ Ядро
+                </button>
+                <button id="tab-btn-vip" onclick="switchTab('vip')" class="py-1.5 rounded-lg text-slate-400 hover:text-cyan-300 transition-all truncate text-center">
+                    💎 VIP
+                </button>
+                <button id="tab-btn-achievements" onclick="switchTab('achievements')" class="py-1.5 rounded-lg text-slate-400 hover:text-amber-300 transition-all truncate text-center flex items-center justify-center gap-0.5">
+                    <span>🏆 Цели</span>
+                </button>
+            </div>
+
+            <!-- ПЕРЕКЛЮЧАТЕЛЬ МУЛЬТИ-ПОКУПКИ (1x / 5x / 10x / 20x / MAX) -->
+            <div id="multi-buy-bar" class="flex items-center justify-between px-1.5 py-1 bg-slate-950/90 rounded-xl border border-slate-800 text-[9px] mt-1.5">
+                <span class="text-slate-400 font-bold uppercase tracking-wider">Пакет:</span>
+                <div class="flex gap-1 font-mono font-black">
+                    <button onclick="setBuyMultiplier(1)" data-mult="1" class="buy-mult-btn px-1.5 py-0.5 rounded-md text-slate-400 hover:text-white">1x</button>
+                    <button onclick="setBuyMultiplier(5)" data-mult="5" class="buy-mult-btn px-1.5 py-0.5 rounded-md text-slate-400 hover:text-white">5x</button>
+                    <button onclick="setBuyMultiplier(10)" data-mult="10" class="buy-mult-btn px-1.5 py-0.5 rounded-md text-slate-400 hover:text-white">10x</button>
+                    <button onclick="setBuyMultiplier(20)" data-mult="20" class="buy-mult-btn px-1.5 py-0.5 rounded-md text-slate-400 hover:text-white">20x</button>
+                    <button onclick="setBuyMultiplier('max')" data-mult="max" class="buy-mult-btn px-1.5 py-0.5 rounded-md text-slate-400 hover:text-amber-400">MAX</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="shop-container" class="flex-1 overflow-y-auto pr-0.5 flex flex-col gap-1.5 my-2"></div>
+
+        <!-- Нижняя панель баланса -->
+        <div class="pt-2 border-t border-slate-800/80 flex flex-col gap-1 px-1 bg-slate-950/80 p-2 rounded-xl mt-1 border border-slate-800/60 shadow-inner">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-bold uppercase text-slate-400">Баланс:</span>
+                <span id="sidebar-money" class="text-xs font-black text-emerald-400 font-mono">15 $</span>
+            </div>
+            <div class="flex justify-between items-center text-[10px]">
+                <span class="text-slate-400">Квантовые ядра:</span>
+                <span id="quantum-cores-badge" class="text-purple-400 font-mono font-bold">0 ⚛️</span>
+            </div>
+            <div class="flex justify-between items-center text-[10px]">
+                <span class="text-cyan-400 font-semibold">Нанокристаллы:</span>
+                <span id="sidebar-gems" class="text-cyan-300 font-mono font-black drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">0 💎</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ВЕРХНЯЯ ПАНЕЛЬ СТАТУСА -->
+    <header id="main-header" class="fixed top-2 sm:top-3 right-2 sm:right-3 left-2 sm:left-[21rem] md:left-[23rem] max-w-2xl z-20 bg-slate-900/85 backdrop-blur-md border-2 border-slate-700/80 rounded-2xl p-2.5 sm:p-3 shadow-2xl flex flex-col gap-1.5 transition-all duration-150">
+        
+        <div class="flex justify-between items-center text-[10px] font-bold">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="uppercase tracking-wider text-slate-400">CyberSpire v7.1</span>
+                
+                <button onclick="openAuthorSupportModal()" class="px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-slate-950 font-black flex items-center gap-1 shadow transition-all active:scale-95 cursor-pointer" title="Поддержать автора проекта">
+                    <span>❤️</span> <span>Автор</span>
+                </button>
+
+                <button id="daily-bonus-btn" onclick="openDailyRewardModal()" class="px-2 py-0.5 rounded bg-purple-950 text-purple-200 border border-purple-600/80 hover:bg-purple-900 font-black flex items-center gap-1 shadow transition-all active:scale-95 cursor-pointer animate-pulse" title="Ежедневный бонус">
+                    <span>🎁</span> <span id="daily-btn-text">Бонус</span>
+                </button>
+
+                <button id="ambience-toggle-btn" onclick="AmbienceEngine.toggle()" class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 hover:text-white" title="Эмбиент">
+                    🎵 ЭМБ
+                </button>
+                <button id="theme-toggle-btn" onclick="ThemeEngine.next()" class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 hover:text-white" title="Смена биома">
+                    🎨 НЕОН
+                </button>
+                <button id="vibro-toggle-btn" onclick="toggleVibration()" class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 hover:text-white" title="Тактильная отдача">
+                    📳 ВКЛ
+                </button>
+                <button onclick="toggleFullscreen()" class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 hover:text-white" title="Полноэкранный режим">
+                    ⛶
+                </button>
+                <div class="bg-cyan-950/80 border border-cyan-500/60 px-2 py-0.5 rounded-full text-cyan-300 font-black flex items-center gap-1 cursor-pointer" onclick="switchTab('vip')">
+                    <span>💎</span> <span id="header-gems">0</span>
+                </div>
+            </div>
+            
+            <div id="combo-badge" class="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-black tracking-wider text-[11px] sm:text-xs transition-all whitespace-nowrap">
+                X1 СТАНДАРТ
+            </div>
+        </div>
+        
+        <div class="flex items-baseline justify-between">
+            <h1 id="money" class="text-2xl sm:text-3xl font-black text-emerald-400">15 $</h1>
+            <div class="text-right">
+                <p class="text-xs font-black flex items-center justify-end gap-1" id="net-cps-container">
+                    <span id="net-cps" class="text-emerald-400">+0.0</span> $/с
+                    <span id="mult-cps-tag" class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-bold">x1</span>
+                </p>
+                <p class="text-[9px] text-slate-400">Расход: <span id="maint-cost" class="text-rose-400">0.0</span> $/с</p>
+            </div>
+        </div>
+
+        <div id="debt-warning" class="hidden bg-rose-950/95 border border-rose-500 rounded-xl p-1.5 text-center text-[10px] font-black text-rose-200 animate-pulse">
+            💸 ДЕФИЦИТ БАЛАНСА! Продайте лишние серверы кнопкой [−] в меню или кликайте для покрытия долга.
+        </div>
+
+        <div id="global-event-banner" class="hidden bg-gradient-to-r from-purple-950/80 to-sky-950/80 border border-purple-500/80 rounded-xl p-1 px-2 flex justify-between items-center text-[10px] font-bold animate-pulse">
+            <div class="flex items-center gap-1.5 text-purple-200">
+                <span id="event-icon">📈</span>
+                <span id="event-title">КРИПТО-РАЛЛИ (Доход x2)</span>
+            </div>
+            <span id="event-timer" class="font-mono text-amber-300">20.0s</span>
+        </div>
+
+        <div class="bg-slate-950/70 rounded-xl p-1.5 border border-slate-800 flex justify-between items-center text-xs">
+            <div class="flex items-center gap-1.5">
+                <span class="text-amber-400 text-sm">⚡</span>
+                <span class="font-bold text-slate-300">Энергосеть:</span>
+            </div>
+            <div class="font-mono font-bold text-[11px]">
+                <span id="energy-used" class="text-slate-300">0</span> / 
+                <span id="energy-total" class="text-sky-400">6</span> кВт
+                <span id="grid-status" class="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">НОРМА</span>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-0.5">
+            <div class="flex justify-between text-[9px] font-mono font-bold text-slate-400">
+                <span>ЯДРО: <span id="heat-percent" class="text-sky-400">0%</span></span>
+                <span class="text-rose-400 font-bold">ЗОНА 5X: 90%+</span>
+            </div>
+
+            <div class="relative w-full bg-slate-950 rounded-full h-3.5 overflow-hidden border border-slate-800 shadow-inner">
+                <div id="heat-bar" class="h-full w-0 transition-[width] duration-75 ease-out bg-gradient-to-r from-slate-950 to-blue-900"></div>
+
+                <div class="absolute inset-0 pointer-events-none text-[8px] font-mono font-black select-none">
+                    <div class="absolute top-0 bottom-0 w-[1.5px] bg-sky-300/60" style="left: 40%;"></div>
+                    <span class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-sky-200" style="left: 40%;">x2</span>
+
+                    <div class="absolute top-0 bottom-0 w-[1.5px] bg-amber-300/70" style="left: 70%;"></div>
+                    <span class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-amber-200" style="left: 70%;">x3</span>
+
+                    <div class="absolute top-0 bottom-0 w-[2px] bg-rose-400" style="left: 90%;"></div>
+                    <span class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-rose-200 font-black" style="left: 90%;">x5</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="overheat-alert" class="hidden py-1 px-2 rounded-lg bg-rose-950/95 border border-rose-500 text-rose-300 text-center text-[10px] font-black animate-pulse">
+            ⚠️️ ПЕРЕГРЕВ СИСТЕМЫ! ОХЛАЖДЕНИЕ...
+        </div>
+    </header>
+
+    <!-- УНИФИЦИРОВАННЫЙ ТЕРМИНАЛ ЛИКВИДАЦИИ АВАРИИ -->
+    <div id="incident-box" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-rose-950/95 border-2 border-rose-500 rounded-2xl p-4 shadow-[0_0_40px_rgba(244,63,94,0.7)] w-84 max-w-[92vw] text-center flex flex-col gap-2.5">
+        <div class="flex justify-between items-center text-xs font-black text-rose-300 uppercase tracking-wider">
+            <span id="incident-qte-title">🚨 УГРОЗА СИСТЕМЕ</span>
+            <span id="incident-timer" class="text-amber-400 font-mono text-sm">6.5s</span>
+        </div>
+        <p id="incident-desc" class="text-xs text-rose-100 font-semibold leading-tight">Обнаружена аномалия! Синхронизируйте частоту для восстановления щита.</p>
+
+        <div class="flex flex-col gap-2 p-2 bg-slate-950/80 rounded-xl border border-rose-800">
+            <div class="flex justify-between text-[10px] text-slate-300 font-mono">
+                <span>Калибровка контура:</span>
+                <span class="text-amber-300 font-bold">1 / 1</span>
+            </div>
+            
+            <div class="relative w-full h-7 bg-slate-900 rounded-full overflow-hidden border border-slate-700 shadow-inner">
+                <div class="absolute top-0 bottom-0 bg-emerald-500/50 border-x-2 border-emerald-400" style="left: 38%; width: 29%;"></div>
+                <div class="absolute top-0 bottom-0 w-[1px] bg-emerald-200/40" style="left: 52.5%;"></div>
+                <div id="qte-timing-cursor" class="absolute top-0 bottom-0 w-3.5 bg-amber-300 shadow-[0_0_12px_#fde047] rounded-full -translate-x-1/2" style="left: 5%;"></div>
+            </div>
+
+            <button onclick="checkUnifiedQTE()" class="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-95 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow transition-all flex items-center justify-center gap-1.5">
+                <span>🎯</span> <span>Зафиксировать частоту</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const SAVE_KEY = 'cyberspire_save_v7';
+
+        const AUTHOR_BOOSTY_URL = "https://boosty.to/"; 
+        const AUTHOR_DONATIONALERTS_URL = "https://www.donationalerts.com/";
+
+        function openAuthorSupportModal() {
+            document.getElementById('author-boosty-btn').href = AUTHOR_BOOSTY_URL;
+            document.getElementById('author-da-btn').href = AUTHOR_DONATIONALERTS_URL;
+            document.getElementById('author-support-modal').classList.remove('hidden');
+        }
+
+        function closeAuthorSupportModal() {
+            document.getElementById('author-support-modal').classList.add('hidden');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeOfflineModal();
+                closeDailyRewardModal();
+                closeAuthorSupportModal();
+            }
+        });
+
+        // ==========================================
+        // 1. ВИБРАЦИЯ И ФУЛЛСКРИН
+        // ==========================================
+        let vibrationEnabled = true;
+        let lastTapVibration = 0;
+
+        const Haptics = {
+            tap() {
+                const now = performance.now();
+                if (vibrationEnabled && navigator.vibrate && (now - lastTapVibration > 80)) {
+                    navigator.vibrate(12);
+                    lastTapVibration = now;
+                }
+            },
+            multiplier() {
+                if (vibrationEnabled && navigator.vibrate) navigator.vibrate([25, 30, 25]);
+            },
+            alarm() {
+                if (vibrationEnabled && navigator.vibrate) navigator.vibrate([70, 50, 70, 50, 90]);
+            },
+            prestige() {
+                if (vibrationEnabled && navigator.vibrate) navigator.vibrate([100, 80, 150]);
+            }
+        };
+
+        function toggleVibration() {
+            vibrationEnabled = !vibrationEnabled;
+            const btn = document.getElementById('vibro-toggle-btn');
+            btn.innerText = vibrationEnabled ? '📳 ВКЛ' : '📴 ВЫКЛ';
+            showToast("Вибрация", vibrationEnabled ? "Тактильная отдача включена" : "Тактильная отдача отключена", "info");
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+
+        let isMobileSidebarOpen = false;
+        function toggleMobileSidebar() {
+            isMobileSidebarOpen = !isMobileSidebarOpen;
+            const sidebar = document.getElementById('shop-sidebar');
+            const icon = document.getElementById('menu-icon');
+            if (isMobileSidebarOpen) {
+                sidebar.classList.remove('-translate-x-[110%]');
+                sidebar.classList.add('translate-x-0');
+                icon.innerText = '✕';
+            } else {
+                sidebar.classList.add('-translate-x-[110%]');
+                sidebar.classList.remove('translate-x-0');
+                icon.innerText = '☰';
+            }
+        }
+
+        // ==========================================
+        // 2. УВЕДОМЛЕНИЯ TOAST
+        // ==========================================
+        function showToast(title, msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgBorder = 'bg-slate-900/95 border-sky-500/80 text-sky-200';
+            if (type === 'success') bgBorder = 'bg-emerald-950/95 border-emerald-500 text-emerald-200';
+            if (type === 'danger') bgBorder = 'bg-rose-950/95 border-rose-500 text-rose-200';
+            if (type === 'gold') bgBorder = 'bg-amber-950/95 border-amber-400 text-amber-200 shadow-[0_0_15px_rgba(251,191,36,0.3)]';
+            if (type === 'gem') bgBorder = 'bg-cyan-950/95 border-cyan-400 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.4)]';
+            if (type === 'purple') bgBorder = 'bg-purple-950/95 border-purple-400 text-purple-200 shadow-[0_0_15px_rgba(192,132,252,0.4)]';
+
+            toast.className = `toast-item pointer-events-auto p-2.5 rounded-xl border backdrop-blur-md shadow-2xl flex flex-col gap-0.5 ${bgBorder}`;
+            toast.innerHTML = `
+                <div class="flex justify-between items-center font-bold text-[11px] uppercase tracking-wide">
+                    <span>${title}</span>
+                    <button class="opacity-60 hover:opacity-100 text-xs ml-2" onclick="this.parentElement.parentElement.remove()">✕</button>
+                </div>
+                <p class="text-[11px] opacity-90 leading-tight">${msg}</p>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 3600);
+        }
+
+        // ==========================================
+        // 3. АУДИО И СИНТЕЗАТОР ЭМБИЕНТА
+        // ==========================================
+        const AudioSys = {
+            ctx: null,
+            buffers: {},
+            alarmSource: null,
+            alarmGain: null,
+            sources: {
+                tap: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3',
+                buy: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
+                alarm: 'https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3',
+                frenzy: 'https://assets.mixkit.co/active_storage/sfx/2020/2020-preview.mp3',
+                success: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3'
+            },
+            init() {
+                const AudioClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioClass) return;
+                this.ctx = new AudioClass();
+
+                for (let key in this.sources) {
+                    fetch(this.sources[key])
+                        .then(res => res.arrayBuffer())
+                        .then(buf => this.ctx.decodeAudioData(buf))
+                        .then(decoded => { this.buffers[key] = decoded; })
+                        .catch(() => {});
+                }
+            },
+            unlock() {
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+                AmbienceEngine.init(this.ctx);
+            },
+            play(key, vol = 0.5) {
+                if (!this.ctx || !this.buffers[key]) return;
+                try {
+                    const src = this.ctx.createBufferSource();
+                    const gain = this.ctx.createGain();
+                    src.buffer = this.buffers[key];
+                    gain.gain.value = vol;
+                    src.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    src.start();
+                } catch(e) {}
+            },
+            playAlarm() {
+                this.stopAlarm();
+                this.unlock();
+                if (!this.ctx) return;
+                if (this.buffers['alarm']) {
+                    try {
+                        const src = this.ctx.createBufferSource();
+                        const gain = this.ctx.createGain();
+                        src.buffer = this.buffers['alarm'];
+                        src.loop = true;
+                        gain.gain.value = 0.65;
+                        src.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        src.start();
+                        this.alarmSource = src;
+                        this.alarmGain = gain;
+                    } catch(e) {}
+                }
+            },
+            stopAlarm() {
+                if (this.alarmSource) {
+                    try {
+                        this.alarmSource.stop();
+                        this.alarmSource.disconnect();
+                    } catch(e) {}
+                    this.alarmSource = null;
+                    this.alarmGain = null;
+                }
+            },
+            playSuccess() {
+                this.unlock();
+                if (this.buffers['success']) {
+                    this.play('success', 0.6);
+                }
+                if (this.ctx) {
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        try {
+                            const osc = this.ctx.createOscillator();
+                            const gain = this.ctx.createGain();
+                            osc.type = 'triangle';
+                            const startTime = this.ctx.currentTime + (idx * 0.07);
+                            osc.frequency.setValueAtTime(freq, startTime);
+                            gain.gain.setValueAtTime(0.12, startTime);
+                            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.32);
+                            osc.connect(gain);
+                            gain.connect(this.ctx.destination);
+                            osc.start(startTime);
+                            osc.stop(startTime + 0.32);
+                        } catch(e) {}
+                    });
+                }
+            }
+        };
+        AudioSys.init();
+
+        const AmbienceEngine = {
+            ctx: null,
+            subOsc: null,
+            midOsc: null,
+            filter: null,
+            gainNode: null,
+            enabled: true,
+            active: false,
+            init(ctx) {
+                if (!ctx || this.active || !this.enabled) return;
+                this.ctx = ctx;
+                try {
+                    this.subOsc = ctx.createOscillator();
+                    this.midOsc = ctx.createOscillator();
+                    this.filter = ctx.createBiquadFilter();
+                    this.gainNode = ctx.createGain();
+
+                    this.subOsc.type = 'sawtooth';
+                    this.subOsc.frequency.setValueAtTime(55, ctx.currentTime);
+
+                    this.midOsc.type = 'sine';
+                    this.midOsc.frequency.setValueAtTime(110, ctx.currentTime);
+
+                    this.filter.type = 'lowpass';
+                    this.filter.frequency.setValueAtTime(180, ctx.currentTime);
+                    this.filter.Q.setValueAtTime(4.0, ctx.currentTime);
+
+                    this.gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
+
+                    this.subOsc.connect(this.filter);
+                    this.midOsc.connect(this.filter);
+                    this.filter.connect(this.gainNode);
+                    this.gainNode.connect(ctx.destination);
+
+                    this.subOsc.start();
+                    this.midOsc.start();
+                    this.active = true;
+                } catch(e) {}
+            },
+            update(multiplier, heat) {
+                if (!this.active || !this.ctx) return;
+                try {
+                    const targetFreq = 160 + (multiplier * 75) + (heat * 4);
+                    const targetSubPitch = 50 + (multiplier * 4);
+                    this.filter.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.2);
+                    this.subOsc.frequency.setTargetAtTime(targetSubPitch, this.ctx.currentTime, 0.2);
+                } catch(e) {}
+            },
+            toggle() {
+                this.enabled = !this.enabled;
+                const btn = document.getElementById('ambience-toggle-btn');
+                if (this.gainNode && this.ctx) {
+                    this.gainNode.gain.setTargetAtTime(this.enabled ? 0.08 : 0.0001, this.ctx.currentTime, 0.1);
+                }
+                btn.innerText = this.enabled ? '🎵 ЭМБ' : '🔇 ЭМБ';
+                showToast("Эмбиент", this.enabled ? "Космический гул включен" : "Эмбиент выключен", "info");
+            }
+        };
+
+        // ==========================================
+        // 4. ДАННЫЕ ИГРЫ, СКИНОФ И ДОСТИЖЕНИЙ
+        // ==========================================
+        const AUTOCLICK_SPEEDS = [0, 1.5, 3.0, 4.5, 6.0, 8.0];
+        const AUTOCLICK_COSTS = [0, 15, 30, 55, 85, 130];
+
+        const SKINS = [
+            { id: 'default', name: 'Кибер-Неон', cost: 0, pylon: 0x0f172a, strip: 0x38bdf8, rim: 0x0ea5e9, desc: 'Классическая неоновая цитадель' },
+            { id: 'magma', name: 'Вулкан-Магма', cost: 50, pylon: 0x240c0c, strip: 0xf97316, rim: 0xe11d48, desc: 'Обсидиан и плазменные магма-каналы' },
+            { id: 'emerald', name: 'Изумрудный Век', cost: 100, pylon: 0x072118, strip: 0x10b981, rim: 0x059669, desc: 'Био-кристаллическая титановая броня' },
+            { id: 'void', name: 'Тёмная Бездна', cost: 200, pylon: 0x160829, strip: 0xc084fc, rim: 0x9333ea, desc: 'Пластины из плотной тёмной материи' },
+            { id: 'gold', name: 'Золотой Синдикат', cost: 350, pylon: 0x241a08, strip: 0xfacc15, rim: 0xd97706, desc: 'Премиальная позолота высшего руководства' }
+        ];
+
+        const DAILY_REWARDS = [
+            { day: 1, gems: 5, cores: 0 },
+            { day: 2, gems: 10, cores: 0 },
+            { day: 3, gems: 15, cores: 0 },
+            { day: 4, gems: 25, cores: 0 },
+            { day: 5, gems: 35, cores: 0 },
+            { day: 6, gems: 50, cores: 0 },
+            { day: 7, gems: 100, cores: 1 }
+        ];
+
+        // 20 РАЗВЁРНУТЫХ ДОСТИЖЕНИЙ
+        const ACHIEVEMENTS_DEF = [
+            { id: 'first_click', name: "Первый импульс", desc: "Сделать 1 ручной клик по цитадели", target: 1, type: 'clicks', gems: 5 },
+            { id: 'click_100', name: "Клик-комбайн", desc: "Сделать 100 ручных кликов", target: 100, type: 'clicks', gems: 10 },
+            { id: 'first_server', name: "Первый сервер", desc: "Построить первый Серверный модуль", target: 1, type: 'servers', gems: 5 },
+            { id: 'mult_2', name: "Разгон x2", desc: "Разогнать комбо-множитель до x2", target: 2, type: 'mult', gems: 5 },
+            { id: 'mult_3', name: "Турбо x3", desc: "Разогнать комбо-множитель до x3", target: 3, type: 'mult', gems: 10 },
+            { id: 'mult_5', name: "Сверхзвук x5", desc: "Достигнуть предельного режима x5 Overdrive", target: 5, type: 'mult', gems: 20 },
+            { id: 'tower_4', name: "Кибер-башня", desc: "Построить цитадель высотой в 4 этажа", target: 4, type: 'floors', gems: 10 },
+            { id: 'tower_8', name: "Мегаструктура", desc: "Вырастить цитадель до 8 этажей", target: 8, type: 'floors', gems: 20 },
+            { id: 'tower_16', name: "Орбитальный шпиль", desc: "Достичь максимума цитадели (16 этажей)", target: 16, type: 'floors', gems: 50 },
+            { id: 'money_1k', name: "Стартовый капитал", desc: "Заработать 1 000 $ за всю историю", target: 1000, type: 'lifetime', gems: 5 },
+            { id: 'money_1m', name: "Первый миллион", desc: "Заработать 1 000 000 $ за всю историю", target: 1000000, type: 'lifetime', gems: 25 },
+            { id: 'money_1b', name: "Олигарх синдиката", desc: "Заработать 1 000 000 000 $ за всю историю", target: 1000000000, type: 'lifetime', gems: 100 },
+            { id: 'prestige_1', name: "Квантовый скачок", desc: "Совершить первое квантовое слияние", target: 1, type: 'prestige', gems: 25 },
+            { id: 'cores_10', name: "Хранитель сингулярности", desc: "Накопить суммарно 10 квантовых ядер", target: 10, type: 'cores', gems: 35 },
+            { id: 'incident_1', name: "Киберзащитник", desc: "Отразить 1 кибератаку на серверы", target: 1, type: 'incidents', gems: 10 },
+            { id: 'incident_5', name: "Непробиваемый фаервол", desc: "Отразить 5 аварийных тревог", target: 5, type: 'incidents', gems: 30 },
+            { id: 'power_50', name: "Энерго-магнат", desc: "Развить генерацию сети до 50 кВт", target: 50, type: 'power', gems: 15 },
+            { id: 'sell_1', name: "Разумный инвестор", desc: "Демонтировать хотя бы одно здание кнопкой [−]", target: 1, type: 'sells', gems: 5 },
+            { id: 'synth_gems', name: "Синтезатор нанитов", desc: "Синтезировать нанокристаллы из мощности сети", target: 1, type: 'synth', gems: 20 },
+            { id: 'skin_custom', name: "Премиальный стиль", desc: "Разблокировать и активировать любой альтернативный 3D-скин", target: 1, type: 'skins', gems: 25 }
+        ];
+
+        const BUILDINGS = {
+            income: [
+                { id: 'i1', name: "Серверный модуль", baseCost: 20, cps: 2, maint: 0.5, powerUse: 1 },
+                { id: 'i2', name: "ИИ-Кластер", baseCost: 150, cps: 14, maint: 3, powerUse: 4 },
+                { id: 'i3', name: "Био-лаборатория", baseCost: 900, cps: 70, maint: 18, powerUse: 12 },
+                { id: 'i4', name: "Дата-шпиль", baseCost: 5500, cps: 380, maint: 90, powerUse: 40 }
+            ],
+            power: [
+                { id: 'p1', name: "Солнечные панели", baseCost: 40, powerGen: 3, maint: 0.8 },
+                { id: 'p2', name: "Ветро-турбина", baseCost: 280, powerGen: 15, maint: 5 },
+                { id: 'p3', name: "Термоядерный блок", baseCost: 1800, powerGen: 65, maint: 32 }
+            ],
+            prestige: [
+                { id: 'q_click', name: "Квантовый импульс", desc: "+20% к клику за уровень", baseCost: 1, costMult: 1.8 },
+                { id: 'q_cooling', name: "Крио-стабилизатор", desc: "-12% к скорости остывания", baseCost: 2, costMult: 2.2 },
+                { id: 'q_income', name: "Темная материя", desc: "+25% к доходу всех зданий", baseCost: 1, costMult: 2.0 },
+                { id: 'q_offline', name: "Хроно-синхронизатор", desc: "+25% к офлайн-доходу за уровень", baseCost: 2, costMult: 2.2 }
+            ],
+            vip: [
+                { id: 'vip_autoclick', name: "ИИ Авто-кликер", desc: "Авто-тапы с прокачкой (1.5 - 8.0 CPS)" },
+                { id: 'vip_perm_x2', name: "Сингулярный удвоитель", desc: "Постоянный множитель x2 ко всей выручке", cost: 200, type: 'perm' },
+                { id: 'vip_no_overheat', name: "Крио-оболочка (Без перегрева)", desc: "Полный иммунитет к блокировкам ядра", cost: 150, type: 'perm' },
+                { id: 'vip_warp', name: "Квантовый скачок (+2 часа)", desc: "Мгновенные 2 часа прибыли с учетом множителя", cost: 100, type: 'instant' }
+            ]
+        };
+
+        let game = {
+            money: 15,
+            consumedGridPower: 0,
+            sessionMoney: 15,
+            lifetimeMoney: 15,
+            basePowerCapacity: 6,
+            counts: { i1: 0, i2: 0, i3: 0, i4: 0, p1: 0, p2: 0, p3: 0 },
+            
+            gems: 0,
+            vipUpgrades: { autoclickLevel: 0, permX2: false, noOverheat: false },
+
+            unlockedSkins: ['default'],
+            activeSkin: 'default',
+
+            dailyStreak: 1,
+            lastDailyClaim: 0,
+
+            stats: {
+                totalClicks: 0,
+                totalPrestigeCount: 0,
+                incidentsResolved: 0,
+                buildingsSold: 0,
+                gemsSynthesized: 0,
+                peakPower: 6
+            },
+            achievementsState: {},
+
+            offlineLevel: 0,
+            prestigeCores: 0,
+            prestigeUpgrades: { q_click: 0, q_cooling: 0, q_income: 0, q_offline: 0 }
+        };
+
+        let activeTab = 'income';
+        let isPrestiging = false;
+        let buyMultiplier = localStorage.getItem('cyberspire_buyMultiplier') || '1';
+
+        function setBuyMultiplier(val) {
+            buyMultiplier = val;
+            try { localStorage.setItem('cyberspire_buyMultiplier', val); } catch(e) {}
+            document.querySelectorAll('.buy-mult-btn').forEach(btn => {
+                const bVal = btn.dataset.mult;
+                if (bVal == val) {
+                    btn.className = 'buy-mult-btn px-1.5 py-0.5 rounded-md bg-slate-800 text-sky-400 border border-slate-700 shadow';
+                } else {
+                    btn.className = 'buy-mult-btn px-1.5 py-0.5 rounded-md text-slate-400 hover:text-white';
+                }
+            });
+            updateShopButtons();
+        }
+
+        function addGems(amount, reason = "") {
+            game.gems += amount;
+            updateGemsUI();
+            saveGame();
+            if (reason) showToast("+ Кристаллы 💎", `${reason}: +${amount} 💎`, "gem");
+        }
+
+        function updateGemsUI() {
+            const hGems = document.getElementById('header-gems');
+            const sGems = document.getElementById('sidebar-gems');
+            if (hGems) hGems.innerText = game.gems;
+            if (sGems) sGems.innerText = `${game.gems} 💎`;
+        }
+
+        // ОТКРЫТАЯ ЧИТ-КНОПКА (+10M ВСЕХ ВАЛЮТ)
+        function addMegaCheat() {
+            game.money += 10000000;
+            game.sessionMoney += 10000000;
+            game.lifetimeMoney += 10000000;
+            game.prestigeCores += 10000000;
+            game.gems += 10000000;
+
+            Haptics.prestige();
+            AudioSys.playSuccess();
+            updateMoneyDisplay();
+            updateGemsUI();
+            updateUI();
+            renderShopStructure();
+            showToast("🚀 ЧИТ-РЕЖИМ АКТИВИРОВАН", "+10,000,000 $, ⚛️ и 💎 начислено!", "gold");
+        }
+
+        function addDevFunds() {
+            game.money += 50000;
+            game.sessionMoney += 50000;
+            game.lifetimeMoney += 50000;
+            updateUI();
+            showToast("Тестовый баланс", "+50 000 $ зачислено!", "success");
+        }
+
+        // ==========================================
+        // 5. РАСЧЁТ СТОИМОСТИ ПАКЕТНОЙ ПОКУПКИ
+        // ==========================================
+        function getBatchCostInfo(b, currentCount, targetMult) {
+            if (targetMult === 'max') {
+                let totalCost = 0;
+                let countToBuy = 0;
+                let c = currentCount;
+                while (true) {
+                    const nextCost = Math.floor(b.baseCost * Math.pow(1.16, c));
+                    if (game.money >= totalCost + nextCost) {
+                        totalCost += nextCost;
+                        countToBuy++;
+                        c++;
+                        if (countToBuy >= 100) break;
+                    } else {
+                        break;
+                    }
+                }
+                if (countToBuy === 0) {
+                    return { count: 1, cost: Math.floor(b.baseCost * Math.pow(1.16, currentCount)), canAfford: false };
+                }
+                return { count: countToBuy, cost: totalCost, canAfford: true };
+            } else {
+                const n = parseInt(targetMult, 10);
+                let totalCost = 0;
+                for (let i = 0; i < n; i++) {
+                    totalCost += Math.floor(b.baseCost * Math.pow(1.16, currentCount + i));
+                }
+                return { count: n, cost: totalCost, canAfford: game.money >= totalCost };
+            }
+        }
+
+        // ==========================================
+        // 6. ЕЖЕДНЕВНЫЕ НАГРАДЫ
+        // ==========================================
+        function isDailyAvailable() {
+            const now = Date.now();
+            const elapsed = now - (game.lastDailyClaim || 0);
+            return elapsed >= (20 * 3600 * 1000); // 20 часов
+        }
+
+        function updateDailyBonusButtonStatus() {
+            const btn = document.getElementById('daily-bonus-btn');
+            const text = document.getElementById('daily-btn-text');
+            if (!btn || !text) return;
+
+            if (isDailyAvailable()) {
+                btn.className = "px-2 py-0.5 rounded bg-purple-950 text-purple-200 border border-purple-500 hover:bg-purple-900 font-black flex items-center gap-1 shadow transition-all active:scale-95 cursor-pointer animate-pulse";
+                text.innerText = "Бонус!";
+            } else {
+                btn.className = "px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200 font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer";
+                text.innerText = "Бонус";
+            }
+        }
+
+        function openDailyRewardModal() {
+            const container = document.getElementById('daily-grid-container');
+            container.innerHTML = '';
+
+            const available = isDailyAvailable();
+            const currentDay = game.dailyStreak || 1;
+
+            DAILY_REWARDS.forEach(r => {
+                const isClaimed = r.day < currentDay || (r.day === currentDay && !available);
+                const isCurrent = r.day === currentDay && available;
+
+                const card = document.createElement('div');
+                card.className = `p-2 rounded-xl border flex flex-col items-center justify-between text-center text-[10px] ${
+                    isCurrent 
+                        ? 'bg-purple-950/80 border-purple-400 shadow-[0_0_15px_rgba(192,132,252,0.4)] animate-bounce' 
+                        : (isClaimed ? 'bg-slate-950/60 border-slate-800 text-slate-500 opacity-60' : 'bg-slate-900/80 border-slate-800 text-slate-300')
+                }`;
+                card.innerHTML = `
+                    <span class="font-bold">День ${r.day}</span>
+                    <span class="text-base my-0.5">${r.day === 7 ? '⚛️' : '💎'}</span>
+                    <span class="font-black ${isCurrent ? 'text-purple-300' : 'text-slate-300'} font-mono">+${r.gems}💎${r.cores ? ' +1⚛' : ''}</span>
+                    <span class="text-[8px] uppercase mt-0.5">${isClaimed ? '✓ Взято' : (isCurrent ? 'Доступно' : 'Ждёт')}</span>
+                `;
+                container.appendChild(card);
+            });
+
+            const claimBtn = document.getElementById('claim-daily-btn');
+            if (available) {
+                claimBtn.className = "w-full py-2.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 hover:opacity-95 active:scale-95 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer";
+                claimBtn.innerText = `Забрать награду (День ${currentDay})`;
+            } else {
+                const remainingSec = Math.ceil(((20 * 3600 * 1000) - (Date.now() - game.lastDailyClaim)) / 1000);
+                claimBtn.className = "w-full py-2.5 bg-slate-800 text-slate-500 font-black rounded-xl text-xs uppercase tracking-wider cursor-not-allowed opacity-60";
+                claimBtn.innerText = `Доступно через: ${formatTimeSpan(remainingSec)}`;
+            }
+
+            document.getElementById('daily-reward-modal').classList.remove('hidden');
+        }
+
+        function closeDailyRewardModal() {
+            document.getElementById('daily-reward-modal').classList.add('hidden');
+        }
+
+        function claimDailyReward() {
+            if (!isDailyAvailable()) return;
+
+            const currentDay = game.dailyStreak || 1;
+            const reward = DAILY_REWARDS.find(r => r.day === currentDay) || DAILY_REWARDS[0];
+
+            game.gems += reward.gems;
+            if (reward.cores) game.prestigeCores += reward.cores;
+            game.lastDailyClaim = Date.now();
+
+            if (currentDay >= 7) {
+                game.dailyStreak = 1;
+            } else {
+                game.dailyStreak = currentDay + 1;
+            }
+
+            AudioSys.playSuccess();
+            Haptics.prestige();
+            updateGemsUI();
+            updateUI();
+            saveGame();
+            closeDailyRewardModal();
+            updateDailyBonusButtonStatus();
+
+            showToast("Ежедневный бонус получен!", `+${reward.gems} 💎 ${reward.cores ? 'и +1 Квантовое ядро ⚛️' : ''}`, "purple");
+        }
+
+        // ==========================================
+        // 7. СИСТЕМА 3D-СКИНОФ
+        // ==========================================
+        function applyActiveSkin() {
+            const skin = SKINS.find(s => s.id === (game.activeSkin || 'default')) || SKINS[0];
+            if (pylonMat) pylonMat.color.setHex(skin.pylon);
+            if (neonStripMat) neonStripMat.color.setHex(skin.strip);
+            if (rimMesh) rimMesh.material.color.setHex(skin.rim);
+            if (laserMat && currentMultiplier < 3 && !AntiCheat.isOverheated) {
+                laserMat.color.setHex(skin.strip);
+            }
+        }
+
+        function selectSkin(skinId) {
+            const skin = SKINS.find(s => s.id === skinId);
+            if (!skin) return;
+
+            if (!game.unlockedSkins.includes(skinId)) {
+                if (game.gems >= skin.cost) {
+                    AudioSys.play('buy', 0.6);
+                    Haptics.multiplier();
+                    game.gems -= skin.cost;
+                    game.unlockedSkins.push(skinId);
+                    game.activeSkin = skinId;
+                    applyActiveSkin();
+                    updateGemsUI();
+                    saveGame();
+                    renderShopStructure();
+                    checkAchievements();
+                    showToast("Скин разблокирован", `${skin.name} активирован!`, "purple");
+                } else {
+                    showToast("Недостаточно кристаллов", `Требуется ${skin.cost} 💎`, "danger");
+                }
+            } else {
+                AudioSys.play('tap', 0.4);
+                game.activeSkin = skinId;
+                applyActiveSkin();
+                saveGame();
+                renderShopStructure();
+                checkAchievements();
+                showToast("Скин установлен", `${skin.name} применён`, "info");
+            }
+        }
+
+        // ==========================================
+        // 8. ПРОДАЖА ЗДАНИЙ
+        // ==========================================
+        function sellBuilding(id) {
+            const count = game.counts[id] || 0;
+            if (count <= 0) return;
+
+            const list = activeTab === 'income' ? BUILDINGS.income : BUILDINGS.power;
+            const b = list.find(item => item.id === id);
+            if (!b) return;
+
+            const refund = Math.floor(getBuildingCost(b, count - 1) * 0.7);
+            AudioSys.play('buy', 0.4);
+
+            game.money += refund;
+            game.counts[id] = count - 1;
+            game.stats.buildingsSold = (game.stats.buildingsSold || 0) + 1;
+
+            calculateEconomy();
+            rebuild3DBuilding();
+            saveGame();
+            updateUI();
+            renderShopStructure();
+            updateShopButtons();
+            checkAchievements();
+
+            showToast("Здание продано", `${b.name} демонтирован. Возврат: +${formatNumber(refund)} $`, "info");
+        }
+
+        // ==========================================
+        // 9. СИНТЕЗ КРИСТАЛЛОВ ЗА ЭНЕРГОСЕТЬ (500 ⚡ = 1 💎)
+        // ==========================================
+        function exchangeGridPowerForGems(gemAmount) {
+            const requiredPower = gemAmount * 500;
+            const powerAfter = econ.totalPowerGen - requiredPower;
+            const willCauseBlackout = powerAfter < econ.totalPowerUsed;
+
+            if (willCauseBlackout) {
+                const confirmed = confirm(
+                    `⚠️ ВНИМАНИЕ: РИСК ДЕФИЦИТА ЭНЕРГИИ!\n\n` +
+                    `Синтез ${gemAmount} 💎 заберёт ${formatNumber(requiredPower)} ⚡ мощности сети.\n` +
+                    `Мощность станций упадёт до ${formatNumber(powerAfter)} кВт при расходе серверов ${formatNumber(econ.totalPowerUsed)} кВт.\n\n` +
+                    `Цитадель уйдёт в БЛЭКАУТ (доход снизится на 80%)!\n\n` +
+                    `Вы уверены, что хотите подтвердить эту транзакцию?`
+                );
+                if (!confirmed) return;
+            }
+
+            AudioSys.play('buy', 0.5);
+            game.consumedGridPower = (game.consumedGridPower || 0) + requiredPower;
+            game.stats.gemsSynthesized = (game.stats.gemsSynthesized || 0) + gemAmount;
+            addGems(gemAmount, `Синтез из энергосети`);
+            calculateEconomy();
+            updateUI();
+            renderShopStructure();
+            updateShopButtons();
+            checkAchievements();
+        }
+
+        function getBuildingCost(b, count) {
+            return Math.floor(b.baseCost * Math.pow(1.16, count));
+        }
+
+        function getPrestigeCost(b, count) {
+            return Math.floor(b.baseCost * Math.pow(b.costMult, count));
+        }
+
+        function getOfflineUpgradeCost() {
+            return Math.floor(100 * Math.pow(2.3, game.offlineLevel));
+        }
+
+        function buyOfflineUpgrade() {
+            const cost = getOfflineUpgradeCost();
+            if (game.money >= cost && game.offlineLevel < 10) {
+                AudioSys.play('buy', 0.5);
+                game.money -= cost;
+                game.offlineLevel++;
+                saveGame();
+                updateUI();
+                renderShopStructure();
+                updateShopButtons();
+                showToast("Автопилот улучшен", `Уровень ${game.offlineLevel}: +5% эффективности, +2 ч. лимита`, "success");
+            }
+        }
+
+        function formatNumber(num) {
+            if (isNaN(num)) return '0';
+            const sign = num < 0 ? '-' : '';
+            const abs = Math.abs(num);
+            if (abs < 1000) {
+                return sign + (abs < 10 && abs > 0 && Math.floor(abs) !== abs ? abs.toFixed(1) : Math.floor(abs).toString());
+            }
+            const units = ['K', 'M', 'B', 'T', 'Qa', 'Qi'];
+            const order = Math.floor(Math.log10(abs) / 3);
+            return sign + (abs / Math.pow(10, order * 3)).toFixed(1) + ' ' + (units[order - 1] || '');
+        }
+
+        function formatTimeSpan(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (h > 0) return `${h} ч. ${m} мин.`;
+            if (m > 0) return `${m} мин. ${s} сек.`;
+            return `${s} сек.`;
+        }
+
+        // ==========================================
+        // 10. СОХРАНЕНИЯ И ОФЛАЙН
+        // ==========================================
+        function saveGame() {
+            try {
+                const saveState = {
+                    money: game.money,
+                    consumedGridPower: game.consumedGridPower,
+                    sessionMoney: game.sessionMoney,
+                    lifetimeMoney: game.lifetimeMoney,
+                    counts: game.counts,
+                    offlineLevel: game.offlineLevel,
+                    gems: game.gems,
+                    vipUpgrades: game.vipUpgrades,
+                    unlockedSkins: game.unlockedSkins,
+                    activeSkin: game.activeSkin,
+                    dailyStreak: game.dailyStreak,
+                    lastDailyClaim: game.lastDailyClaim,
+                    stats: game.stats,
+                    achievementsState: game.achievementsState,
+                    prestigeCores: game.prestigeCores,
+                    prestigeUpgrades: game.prestigeUpgrades,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(SAVE_KEY, JSON.stringify(saveState));
+            } catch(e) {}
+        }
+
+        function calculateOfflineEarnings(elapsedSeconds) {
+            const baseEfficiency = 0.20;
+            const levelBonus = game.offlineLevel * 0.05;
+            const prestigeFactor = 1 + ((game.prestigeUpgrades.q_offline || 0) * 0.25);
+            const totalEfficiency = (baseEfficiency + levelBonus) * prestigeFactor;
+
+            const baseMaxSeconds = 2 * 3600;
+            const maxSecondsBonus = game.offlineLevel * 2 * 3600;
+            const maxSeconds = Math.min(22 * 3600, baseMaxSeconds + maxSecondsBonus);
+
+            const cappedSeconds = Math.min(elapsedSeconds, maxSeconds);
+            calculateEconomy();
+
+            const rate = Math.max(0, econ.netCPS);
+            const earned = rate * cappedSeconds * totalEfficiency;
+
+            return { earned, cappedSeconds, totalEfficiency, maxSeconds };
+        }
+
+        function loadGame() {
+            try {
+                const raw = localStorage.getItem(SAVE_KEY);
+                if (!raw) return;
+                const data = JSON.parse(raw);
+
+                if (typeof data.money === 'number') game.money = data.money;
+                if (typeof data.consumedGridPower === 'number') game.consumedGridPower = data.consumedGridPower;
+                if (typeof data.sessionMoney === 'number') game.sessionMoney = data.sessionMoney;
+                if (typeof data.lifetimeMoney === 'number') game.lifetimeMoney = data.lifetimeMoney;
+                if (typeof data.offlineLevel === 'number') game.offlineLevel = data.offlineLevel;
+                if (typeof data.gems === 'number') game.gems = data.gems;
+                if (typeof data.prestigeCores === 'number') game.prestigeCores = data.prestigeCores;
+
+                if (Array.isArray(data.unlockedSkins)) game.unlockedSkins = data.unlockedSkins;
+                if (typeof data.activeSkin === 'string') game.activeSkin = data.activeSkin;
+                if (typeof data.dailyStreak === 'number') game.dailyStreak = data.dailyStreak;
+                if (typeof data.lastDailyClaim === 'number') game.lastDailyClaim = data.lastDailyClaim;
+
+                if (data.counts) game.counts = { ...game.counts, ...data.counts };
+                if (data.stats) game.stats = { ...game.stats, ...data.stats };
+                if (data.achievementsState) game.achievementsState = { ...game.achievementsState, ...data.achievementsState };
+                if (data.vipUpgrades) {
+                    game.vipUpgrades = { ...game.vipUpgrades, ...data.vipUpgrades };
+                    if (data.vipUpgrades.autoclick === true && !data.vipUpgrades.autoclickLevel) {
+                        game.vipUpgrades.autoclickLevel = 5;
+                    }
+                }
+                if (data.prestigeUpgrades) game.prestigeUpgrades = { ...game.prestigeUpgrades, ...data.prestigeUpgrades };
+
+                if (data.timestamp) {
+                    const elapsed = Math.floor((Date.now() - data.timestamp) / 1000);
+                    if (elapsed > 15) {
+                        const { earned, cappedSeconds, totalEfficiency } = calculateOfflineEarnings(elapsed);
+                        if (earned > 0) {
+                            game.money += earned;
+                            game.sessionMoney += earned;
+                            game.lifetimeMoney += earned;
+
+                            document.getElementById('offline-modal-time').innerText = `Станция работала автономно: ${formatTimeSpan(cappedSeconds)}`;
+                            document.getElementById('offline-modal-earned').innerText = `+${formatNumber(earned)} $`;
+                            document.getElementById('offline-modal-eff').innerText = `Эффективность: ${Math.round(totalEfficiency * 100)}%`;
+                            document.getElementById('offline-modal').classList.remove('hidden');
+                        }
+                    }
+                }
+            } catch(e) {}
+        }
+
+        function closeOfflineModal() {
+            document.getElementById('offline-modal').classList.add('hidden');
+            saveGame();
+            updateUI();
+        }
+
+        setInterval(saveGame, 3000);
+        window.addEventListener('beforeunload', saveGame);
+        window.addEventListener('visibilitychange', () => {
+            if (document.hidden) saveGame();
+        });
+
+        // ==========================================
+        // 11. ПРЕСТИЖ
+        // ==========================================
+        const PRESTIGE_BASE_PRICE = 30000;
+
+        function getPendingCores() {
+            if (game.sessionMoney < PRESTIGE_BASE_PRICE) return 0;
+            return Math.floor(Math.sqrt(game.sessionMoney / PRESTIGE_BASE_PRICE));
+        }
+
+        function getNextCorePrice(cores) {
+            const nextTarget = cores <= 0 ? 1 : cores + 1;
+            return PRESTIGE_BASE_PRICE * Math.pow(nextTarget, 2);
+        }
+
+        function triggerPrestige() {
+            if (isPrestiging) return;
+            const coresToGain = getPendingCores();
+            if (coresToGain <= 0) {
+                showToast("Слияние недоступно", `Требуется минимум ${formatNumber(PRESTIGE_BASE_PRICE)} $ капитала`, "danger");
+                return;
+            }
+
+            isPrestiging = true;
+            Haptics.prestige();
+            AudioSys.play('frenzy', 0.9);
+
+            let collapseScale = 1.0;
+            const collapseInterval = setInterval(() => {
+                collapseScale -= 0.15;
+                if (collapseScale <= 0.1) {
+                    clearInterval(collapseInterval);
+                    finishPrestige(coresToGain);
+                } else {
+                    baseRoot.scale.set(collapseScale, collapseScale, collapseScale);
+                }
+            }, 30);
+        }
+
+        function finishPrestige(gainedCores) {
+            AudioSys.stopAlarm();
+            cleanupQTE();
+            if (activeIncident) {
+                clearInterval(incidentTimerInterval);
+                document.getElementById('incident-box').classList.add('hidden');
+                activeIncident = null;
+            }
+
+            game.prestigeCores += gainedCores;
+            game.money = 15;
+            game.consumedGridPower = 0;
+            game.sessionMoney = 15;
+            game.counts = { i1: 0, i2: 0, i3: 0, i4: 0, p1: 0, p2: 0, p3: 0 };
+            game.stats.totalPrestigeCount = (game.stats.totalPrestigeCount || 0) + 1;
+            heatPoints = 0;
+            currentMultiplier = 1;
+            lastMultiplier = 1;
+
+            triggerShockwave(0xc084fc);
+            baseRoot.scale.set(1, 1, 1);
+            isPrestiging = false;
+
+            calculateEconomy();
+            rebuild3DBuilding();
+            updateMultiplierClass();
+            updateMultiplierVisuals();
+            renderShopStructure();
+            updateShopButtons();
+            updateUI();
+            checkAchievements();
+            saveGame();
+
+            showToast("Квантовое Слияние!", `Получено ядер сингулярности: +${gainedCores} ⚛️`, "gold");
+        }
+
+        function resetGame() {
+            isPrestiging = false;
+            AudioSys.stopAlarm();
+            cleanupQTE();
+            game.money = 15;
+            game.consumedGridPower = 0;
+            game.sessionMoney = 15;
+            game.lifetimeMoney = 15;
+            game.counts = { i1: 0, i2: 0, i3: 0, i4: 0, p1: 0, p2: 0, p3: 0 };
+            game.offlineLevel = 0;
+            game.gems = 0;
+            game.vipUpgrades = { autoclickLevel: 0, permX2: false, noOverheat: false };
+            game.unlockedSkins = ['default'];
+            game.activeSkin = 'default';
+            game.dailyStreak = 1;
+            game.lastDailyClaim = 0;
+            game.stats = { totalClicks: 0, totalPrestigeCount: 0, incidentsResolved: 0, buildingsSold: 0, gemsSynthesized: 0, peakPower: 6 };
+            game.achievementsState = {};
+            game.prestigeCores = 0;
+            game.prestigeUpgrades = { q_click: 0, q_cooling: 0, q_income: 0, q_offline: 0 };
+            
+            heatPoints = 0;
+            currentMultiplier = 1;
+            lastMultiplier = 1;
+            lastEmissiveHex = null;
+            lastHeatTick = performance.now();
+            AntiCheat.isOverheated = false;
+            clearTimeout(AntiCheat.cooldownTimer);
+            document.getElementById('overheat-alert').classList.add('hidden');
+
+            if (activeIncident) {
+                clearInterval(incidentTimerInterval);
+                document.getElementById('incident-box').classList.add('hidden');
+                activeIncident = null;
+            }
+
+            saveGame();
+            calculateEconomy();
+            rebuild3DBuilding();
+            applyActiveSkin();
+            updateMultiplierClass();
+            updateMultiplierVisuals();
+            renderShopStructure();
+            updateShopButtons();
+            updateUI();
+            updateGemsUI();
+            updateDailyBonusButtonStatus();
+
+            showToast("Сброс", "База перезапущена с нуля!", "info");
+        }
+
+        // ==========================================
+        // 12. QTE АВАРИИ
+        // ==========================================
+        let activeIncident = null;
+        let incidentTimerInterval = null;
+        let incidentTimeLeft = 0;
+        let timingCursorPos = 5;
+        let timingDirection = 1;
+        let timingAnimationId = null;
+        let lastTimingFrameTime = performance.now();
+        let qteSpeed = 95;
+
+        const INCIDENT_TYPES = [
+            { title: "🚨 КИБЕРАТАКА СИНДИКАТА", desc: "Хакеры взламывают сеть! Перехватите несущую частоту.", speed: 95 },
+            { title: "⚠️ ПЕРЕГРУЗКА РЕАКТОРА", desc: "Плазменный контур перегрет! Синхронизируйте клапан фазы.", speed: 115 },
+            { title: "⚡ ИОННЫЙ СБОЙ ЩИТА", desc: "Аномальная буря! Откалибруйте магнитные отражатели.", speed: 105 }
+        ];
+
+        function triggerRandomIncident() {
+            if (activeIncident || AntiCheat.isOverheated || isPrestiging) return;
+
+            const breach = INCIDENT_TYPES[Math.floor(Math.random() * INCIDENT_TYPES.length)];
+            qteSpeed = breach.speed;
+            incidentTimeLeft = 6.5;
+
+            activeIncident = { breach };
+            AudioSys.playAlarm();
+            Haptics.alarm();
+
+            const box = document.getElementById('incident-box');
+            document.getElementById('incident-qte-title').innerText = breach.title;
+            document.getElementById('incident-desc').innerText = breach.desc;
+
+            box.classList.remove('hidden');
+            applyReactorColor(0xff0055);
+            startUnifiedQTE();
+
+            incidentTimerInterval = setInterval(() => {
+                incidentTimeLeft -= 0.1;
+                document.getElementById('incident-timer').innerText = Math.max(0, incidentTimeLeft).toFixed(1) + 's';
+                if (incidentTimeLeft <= 0) {
+                    failIncident();
+                }
+            }, 100);
+        }
+
+        function startUnifiedQTE() {
+            timingCursorPos = 5;
+            timingDirection = 1;
+            lastTimingFrameTime = performance.now();
+            const cursor = document.getElementById('qte-timing-cursor');
+
+            function loop(now) {
+                if (!activeIncident) return;
+                const dt = Math.min((now - lastTimingFrameTime) / 1000, 0.1);
+                lastTimingFrameTime = now;
+
+                timingCursorPos += timingDirection * qteSpeed * dt;
+                if (timingCursorPos >= 95) {
+                    timingCursorPos = 95;
+                    timingDirection = -1;
+                }
+                if (timingCursorPos <= 5) {
+                    timingCursorPos = 5;
+                    timingDirection = 1;
+                }
+                cursor.style.left = timingCursorPos + '%';
+                timingAnimationId = requestAnimationFrame(loop);
+            }
+            timingAnimationId = requestAnimationFrame(loop);
+        }
+
+        function checkUnifiedQTE() {
+            if (!activeIncident) return;
+            if (timingCursorPos >= 38 && timingCursorPos <= 67) {
+                resolveIncident();
+            } else {
+                Haptics.alarm();
+                document.getElementById('incident-box').classList.add('shake');
+                setTimeout(() => document.getElementById('incident-box').classList.remove('shake'), 300);
+                showToast("Мимо зоны!", "Частота не зафиксирована, цельтесь точнее!", "danger");
+            }
+        }
+
+        function cleanupQTE() {
+            cancelAnimationFrame(timingAnimationId);
+        }
+
+        function resolveIncident() {
+            if (!activeIncident) return;
+            clearInterval(incidentTimerInterval);
+            document.getElementById('incident-box').classList.add('hidden');
+            cleanupQTE();
+            activeIncident = null;
+
+            AudioSys.stopAlarm();
+            AudioSys.playSuccess();
+            Haptics.multiplier();
+
+            game.stats.incidentsResolved = (game.stats.incidentsResolved || 0) + 1;
+
+            const wonGem = Math.random() < 0.10;
+            if (wonGem) {
+                addGems(1, "Редкий нанокристалл из обломков");
+            }
+
+            showToast("Угроза ликвидирована", wonGem ? "Сетевой экран в норме • НАЙДЕН 1 💎!" : "Контур защиты синхронизирован!", wonGem ? 'gem' : 'success');
+            updateMultiplierVisuals();
+            checkAchievements();
+        }
+
+        function failIncident() {
+            clearInterval(incidentTimerInterval);
+            document.getElementById('incident-box').classList.add('hidden');
+            cleanupQTE();
+            activeIncident = null;
+
+            AudioSys.stopAlarm();
+
+            const penalty = Math.max(15, Math.floor(Math.abs(game.money) * 0.15));
+            game.money -= penalty;
+
+            Haptics.alarm();
+            document.getElementById('app-body').classList.add('shake');
+            setTimeout(() => document.getElementById('app-body').classList.remove('shake'), 400);
+
+            showToast("Взлом успешен!", `Потери: -${formatNumber(penalty)} $`, 'danger');
+            updateMultiplierVisuals();
+            updateUI();
+        }
+
+        setInterval(() => {
+            if (Math.random() < 0.35 && Object.values(game.counts).some(v => v > 0)) {
+                triggerRandomIncident();
+            }
+        }, 36000);
+
+        // ==========================================
+        // 13. ДВИЖОК ТЕМ И БИОМОВ
+        // ==========================================
+        const THEMES = [
+            { id: 'cyber', name: 'НЕОН', fog: 0x020617, dirLight: 0x38bdf8, stars: 0xcfdafe, hemi: 0x93c5fd, dust: 0x38bdf8 },
+            { id: 'mars', name: 'МАРС', fog: 0x180905, dirLight: 0xf97316, stars: 0xfed7aa, hemi: 0xfdba74, dust: 0xf97316 },
+            { id: 'void', name: 'БЕЗДНА', fog: 0x0f051d, dirLight: 0xc084fc, stars: 0xe9d5ff, hemi: 0xd8b4fe, dust: 0xc084fc }
+        ];
+        let currentThemeIdx = 0;
+
+        const ThemeEngine = {
+            next() {
+                currentThemeIdx = (currentThemeIdx + 1) % THEMES.length;
+                const th = THEMES[currentThemeIdx];
+                scene.fog.color.setHex(th.fog);
+                renderer.setClearColor(th.fog);
+                dirLight.color.setHex(th.dirLight);
+                starMat.color.setHex(th.stars);
+                hemiLight.color.setHex(th.hemi);
+                dustMat.color.setHex(th.dust);
+                document.getElementById('theme-toggle-btn').innerText = `🎨 ${th.name}`;
+                showToast("Биом изменен", `Атмосфера: ${th.name}`, "info");
+            }
+        };
+
+        // ==========================================
+        // 14. ТЕКСТУРЫ И 3D THREE.JS
+        // ==========================================
+        function createBumpTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#808080';
+            ctx.fillRect(0, 0, 256, 256);
+
+            ctx.fillStyle = '#202020';
+            ctx.fillRect(0, 0, 256, 4);
+            ctx.fillRect(0, 252, 256, 4);
+            ctx.fillRect(0, 0, 4, 256);
+            ctx.fillRect(252, 0, 4, 256);
+
+            ctx.fillStyle = '#ffffff';
+            for (let i = 8; i < 256; i += 32) {
+                ctx.beginPath();
+                ctx.arc(i, 8, 2.5, 0, Math.PI * 2);
+                ctx.arc(i, 248, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createSciFiFacadeTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#0a1024';
+            ctx.fillRect(0, 0, 512, 512);
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 4;
+            for (let y = 0; y < 512; y += 64) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(512, y);
+                ctx.stroke();
+            }
+
+            for (let y = 12; y < 512; y += 64) {
+                for (let x = 16; x < 512; x += 32) {
+                    const r = Math.random();
+                    if (r > 0.35) {
+                        ctx.fillStyle = r > 0.85 ? '#38bdf8' : (r > 0.65 ? '#0284c7' : '#1e3a8a');
+                        ctx.shadowColor = ctx.fillStyle;
+                        ctx.shadowBlur = 8;
+                        ctx.fillRect(x, y, 16, 36);
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+
+            ctx.fillStyle = '#0ea5e9';
+            ctx.shadowColor = '#0ea5e9';
+            ctx.shadowBlur = 12;
+            ctx.fillRect(252, 0, 8, 512);
+            ctx.shadowBlur = 0;
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function createHexIslandTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#070a16';
+            ctx.fillRect(0, 0, 512, 512);
+
+            const size = 32;
+            const h = size * Math.sqrt(3);
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+
+            function drawHex(x, y) {
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i;
+                    const hx = x + size * Math.cos(angle);
+                    const hy = y + size * Math.sin(angle);
+                    if (i === 0) ctx.moveTo(hx, hy);
+                    else ctx.lineTo(hx, hy);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            for (let y = 0; y < 512 + h; y += h) {
+                for (let x = 0; x < 512 + size * 3; x += size * 3) {
+                    drawHex(x, y);
+                    drawHex(x + 1.5 * size, y + h / 2);
+                }
+            }
+
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 6;
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            ctx.arc(256, 256, 180, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(256, 256, 220, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const bumpTexture = createBumpTexture();
+        const facadeTexture = createSciFiFacadeTexture();
+        const hexIslandTexture = createHexIslandTexture();
+
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020617, 0.035);
+
+        let towerOffsetX = window.innerWidth > 640 ? 0.9 : 0.0;
+        
+        let targetCameraY = 3.6;
+        let targetCameraZ = 6.2;
+        let targetLookAtY = 1.2;
+        let currentCameraY = 3.6;
+        let currentCameraZ = 6.2;
+        let currentLookAtY = 1.2;
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(towerOffsetX, currentCameraY, currentCameraZ);
+        camera.lookAt(towerOffsetX, currentLookAtY, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const hemiLight = new THREE.HemisphereLight(0x93c5fd, 0x020617, 0.9);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0x38bdf8, 2.0);
+        dirLight.position.set(7, 18, 8);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(1024, 1024);
+        dirLight.shadow.camera.near = 1;
+        dirLight.shadow.camera.far = 40;
+        dirLight.shadow.camera.left = -6;
+        dirLight.shadow.camera.right = 6;
+        dirLight.shadow.camera.top = 18;
+        dirLight.shadow.camera.bottom = -3;
+        dirLight.shadow.bias = -0.0004;
+        scene.add(dirLight);
+
+        const coreLight = new THREE.PointLight(0x38bdf8, 2.8, 12);
+        scene.add(coreLight);
+
+        const dustGeo = new THREE.BufferGeometry();
+        const dustCount = 180;
+        const dustPos = new Float32Array(dustCount * 3);
+        for(let i = 0; i < dustCount * 3; i += 3) {
+            dustPos[i] = (Math.random() - 0.5) * 16;
+            dustPos[i+1] = Math.random() * 12;
+            dustPos[i+2] = (Math.random() - 0.5) * 16;
+        }
+        dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+        const dustMat = new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.15, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending });
+        const dustParticles = new THREE.Points(dustGeo, dustMat);
+        scene.add(dustParticles);
+
+        const nebulaGeo = new THREE.BufferGeometry();
+        const nebPos = new Float32Array(120 * 3);
+        for(let i = 0; i < 120 * 3; i += 3) {
+            nebPos[i] = (Math.random() - 0.5) * 60;
+            nebPos[i+1] = Math.random() * 35 - 5;
+            nebPos[i+2] = (Math.random() - 0.5) * 60;
+        }
+        nebulaGeo.setAttribute('position', new THREE.BufferAttribute(nebPos, 3));
+        scene.add(new THREE.Points(nebulaGeo, new THREE.PointsMaterial({ color: 0x3b82f6, size: 4.5, transparent: true, opacity: 0.18 })));
+
+        const starGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(900 * 3);
+        for (let i = 0; i < 900 * 3; i += 3) {
+            starPos[i] = (Math.random() - 0.5) * 80;
+            starPos[i+1] = Math.random() * 45 - 8;
+            starPos[i+2] = (Math.random() - 0.5) * 80;
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({ color: 0xcfdafe, size: 0.13, transparent: true, opacity: 0.8 });
+        scene.add(new THREE.Points(starGeo, starMat));
+
+        const tapParticleCount = 36;
+        const tapGeo = new THREE.BufferGeometry();
+        const tapPositions = new Float32Array(tapParticleCount * 3);
+        const tapVelocities = [];
+        for (let i = 0; i < tapParticleCount; i++) {
+            tapPositions[i * 3] = 0;
+            tapPositions[i * 3 + 1] = 0;
+            tapPositions[i * 3 + 2] = 0;
+            tapVelocities.push(new THREE.Vector3());
+        }
+        tapGeo.setAttribute('position', new THREE.BufferAttribute(tapPositions, 3));
+        const tapMat = new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.22, transparent: true, opacity: 0, blending: THREE.AdditiveBlending });
+        const tapBurstMesh = new THREE.Points(tapGeo, tapMat);
+        scene.add(tapBurstMesh);
+
+        function trigger3DTapBurst() {
+            const topY = reactorGroup.position.y || 2;
+            for (let i = 0; i < tapParticleCount; i++) {
+                tapPositions[i * 3] = towerOffsetX + (Math.random() - 0.5) * 0.4;
+                tapPositions[i * 3 + 1] = topY + (Math.random() - 0.5) * 0.4;
+                tapPositions[i * 3 + 2] = (Math.random() - 0.5) * 0.4;
+
+                tapVelocities[i].set(
+                    (Math.random() - 0.5) * 0.15,
+                    Math.random() * 0.15 + 0.05,
+                    (Math.random() - 0.5) * 0.15
+                );
+            }
+            tapGeo.attributes.position.needsUpdate = true;
+            tapMat.opacity = 1.0;
+        }
+
+        const sparkGeo = new THREE.BufferGeometry();
+        const sparkCount = 24;
+        const sparkPos = new Float32Array(sparkCount * 3);
+        sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+        const sparkMat = new THREE.LineBasicMaterial({ color: 0xf43f5e, transparent: true, opacity: 0 });
+        const sparkLines = new THREE.LineSegments(sparkGeo, sparkMat);
+        scene.add(sparkLines);
+
+        const laserGeo = new THREE.BufferGeometry();
+        const laserPositions = new Float32Array(5 * 2 * 3);
+        laserGeo.setAttribute('position', new THREE.BufferAttribute(laserPositions, 3));
+        const laserMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending });
+        const laserLines = new THREE.LineSegments(laserGeo, laserMat);
+        scene.add(laserLines);
+
+        const baseRoot = new THREE.Group();
+        baseRoot.position.x = towerOffsetX;
+        scene.add(baseRoot);
+
+        const islandGroup = new THREE.Group();
+        baseRoot.add(islandGroup);
+
+        const island = new THREE.Mesh(
+            new THREE.CylinderGeometry(2.35, 2.55, 0.45, 48),
+            new THREE.MeshStandardMaterial({
+                map: hexIslandTexture,
+                bumpMap: bumpTexture,
+                bumpScale: 0.04,
+                roughness: 0.35,
+                metalness: 0.8
+            })
+        );
+        island.position.y = -0.2;
+        island.receiveShadow = true;
+        islandGroup.add(island);
+
+        const rimMesh = new THREE.Mesh(
+            new THREE.TorusGeometry(2.45, 0.04, 16, 64),
+            new THREE.MeshBasicMaterial({ color: 0x0ea5e9 })
+        );
+        rimMesh.rotation.x = Math.PI / 2;
+        rimMesh.position.y = 0.04;
+        baseRoot.add(rimMesh);
+
+        const subIsland = new THREE.Mesh(
+            new THREE.CylinderGeometry(2.1, 1.8, 0.3, 32),
+            new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.3 })
+        );
+        subIsland.position.y = -0.48;
+        islandGroup.add(subIsland);
+
+        const mechRing = new THREE.Mesh(
+            new THREE.TorusGeometry(2.0, 0.06, 12, 36),
+            new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.6 })
+        );
+        mechRing.rotation.x = Math.PI / 2;
+        mechRing.position.y = -0.42;
+        islandGroup.add(mechRing);
+
+        const thruster1 = new THREE.Mesh(
+            new THREE.ConeGeometry(1.4, 1.1, 32, 1, true),
+            new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.45, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+        );
+        thruster1.position.y = -1.0;
+        thruster1.rotation.x = Math.PI;
+        islandGroup.add(thruster1);
+
+        const thruster2 = new THREE.Mesh(
+            new THREE.ConeGeometry(0.7, 0.8, 24, 1, true),
+            new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+        );
+        thruster2.position.y = -0.85;
+        thruster2.rotation.x = Math.PI;
+        islandGroup.add(thruster2);
+
+        const towerGroup = new THREE.Group();
+        baseRoot.add(towerGroup);
+        let towerParts = [];
+
+        const reactorGroup = new THREE.Group();
+        baseRoot.add(reactorGroup);
+
+        const reactorCoreMat = new THREE.MeshStandardMaterial({
+            color: 0x38bdf8,
+            emissive: 0x0284c7,
+            emissiveIntensity: 1.4,
+            roughness: 0.1,
+            metalness: 0.9
+        });
+        const reactorCore = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 1), reactorCoreMat);
+        reactorGroup.add(reactorCore);
+
+        const gyroRing1 = new THREE.Mesh(
+            new THREE.TorusGeometry(0.48, 0.024, 16, 48),
+            new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.9, roughness: 0.2 })
+        );
+        reactorGroup.add(gyroRing1);
+
+        const gyroRing2 = new THREE.Mesh(
+            new THREE.TorusGeometry(0.58, 0.022, 16, 48),
+            new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        );
+        reactorGroup.add(gyroRing2);
+
+        const shockwaveMesh = new THREE.Mesh(
+            new THREE.RingGeometry(0.3, 0.45, 32),
+            new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0, side: THREE.DoubleSide })
+        );
+        shockwaveMesh.rotation.x = Math.PI / 2;
+        reactorGroup.add(shockwaveMesh);
+
+        function triggerShockwave(colorHex) {
+            shockwaveMesh.material.color.setHex(colorHex);
+            shockwaveMesh.scale.set(1, 1, 1);
+            shockwaveMesh.material.opacity = 0.9;
+        }
+
+        let lastEmissiveHex = null;
+        function applyReactorColor(hex) {
+            if (lastEmissiveHex === hex) return;
+            lastEmissiveHex = hex;
+            if (reactorCoreMat) reactorCoreMat.emissive.setHex(hex);
+            if (coreLight) coreLight.color.setHex(hex);
+            if (droneGlowMat) droneGlowMat.color.setHex(hex);
+            
+            if (laserMat) {
+                if (currentMultiplier >= 3 || AntiCheat.isOverheated) {
+                    laserMat.color.setHex(hex);
+                } else {
+                    const skin = SKINS.find(s => s.id === (game.activeSkin || 'default')) || SKINS[0];
+                    laserMat.color.setHex(skin.strip);
+                }
+            }
+        }
+
+        const droneGroup = new THREE.Group();
+        baseRoot.add(droneGroup);
+
+        const dronesData = [
+            { angle: 0.0, radius: 1.85, heightRatio: 0.15, speed: 0.016 },
+            { angle: 1.3, radius: 2.10, heightRatio: 0.35, speed: 0.013 },
+            { angle: 2.6, radius: 1.95, heightRatio: 0.55, speed: 0.019 },
+            { angle: 3.9, radius: 2.25, heightRatio: 0.75, speed: 0.015 },
+            { angle: 5.2, radius: 1.80, heightRatio: 0.92, speed: 0.018 }
+        ];
+
+        const droneMeshes = [];
+        const droneBodyGeo = new THREE.BoxGeometry(0.2, 0.07, 0.14);
+        const droneBodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.2 });
+        const droneGlowGeo = new THREE.BoxGeometry(0.05, 0.05, 0.05);
+        const droneGlowMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+        dronesData.forEach(d => {
+            const drone = new THREE.Group();
+            const body = new THREE.Mesh(droneBodyGeo, droneBodyMat);
+            body.castShadow = true;
+            drone.add(body);
+
+            const glow = new THREE.Mesh(droneGlowGeo, droneGlowMat);
+            glow.position.set(-0.11, 0, 0);
+            drone.add(glow);
+
+            droneGroup.add(drone);
+            droneMeshes.push({ group: drone, data: d });
+        });
+
+        const pylonMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.2 });
+        const neonStripMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+        const corniceMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            bumpMap: bumpTexture,
+            bumpScale: 0.05,
+            metalness: 0.85,
+            roughness: 0.25
+        });
+
+        function rebuild3DBuilding() {
+            towerParts.forEach(p => towerGroup.remove(p));
+            towerParts = [];
+
+            const total = Object.values(game.counts).reduce((a, b) => a + b, 0);
+            const floors = Math.min(1 + Math.floor(total / 3), 16);
+
+            const floorW = 1.25;
+            const floorH = 0.54;
+            const floorD = 1.25;
+
+            const pylonGeo = new THREE.BoxGeometry(0.12, floorH + 0.04, 0.12);
+            const neonStripGeo = new THREE.BoxGeometry(0.03, floorH, 0.03);
+            const corniceGeo = new THREE.BoxGeometry(floorW * 1.06, 0.06, floorD * 1.06);
+
+            for (let i = 0; i < floors; i++) {
+                const floorGroup = new THREE.Group();
+                const floorY = 0.27 + (i * floorH);
+                floorGroup.position.y = floorY;
+
+                const coreMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(floorW * 0.92, floorH * 0.92, floorD * 0.92),
+                    new THREE.MeshStandardMaterial({
+                        map: facadeTexture,
+                        roughness: 0.35,
+                        metalness: 0.6,
+                        color: econ.isBlackout ? 0x475569 : 0xffffff
+                    })
+                );
+                coreMesh.castShadow = true;
+                coreMesh.receiveShadow = true;
+                floorGroup.add(coreMesh);
+
+                const halfW = (floorW * 0.96) / 2;
+                const halfD = (floorD * 0.96) / 2;
+                [
+                    [-halfW, -halfD], [halfW, -halfD],
+                    [-halfW, halfD],  [halfW, halfD]
+                ].forEach(([px, pz]) => {
+                    const pylon = new THREE.Mesh(pylonGeo, pylonMat);
+                    pylon.position.set(px, 0, pz);
+                    pylon.castShadow = true;
+                    floorGroup.add(pylon);
+
+                    const strip = new THREE.Mesh(neonStripGeo, neonStripMat);
+                    strip.position.set(px * 1.05, 0, pz * 1.05);
+                    floorGroup.add(strip);
+                });
+
+                const cornice = new THREE.Mesh(corniceGeo, corniceMat);
+                cornice.position.y = floorH / 2;
+                cornice.castShadow = true;
+                floorGroup.add(cornice);
+
+                if (i % 2 === 1) {
+                    const dish = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.12, 0.02, 0.08, 16),
+                        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.9 })
+                    );
+                    dish.rotation.z = Math.PI / 3;
+                    dish.position.set(halfW + 0.1, 0, 0);
+                    floorGroup.add(dish);
+                }
+
+                towerGroup.add(floorGroup);
+                towerParts.push(floorGroup);
+            }
+
+            const topY = 0.27 + (floors * floorH) + 0.38;
+            reactorGroup.position.set(0, topY, 0);
+            coreLight.position.set(towerOffsetX, topY, 0);
+
+            targetLookAtY = (topY * 0.55) + 0.4;
+            targetCameraY = (topY * 0.7) + 2.2;
+            targetCameraZ = Math.max(5.8 + (floors * 0.16), 6.2 / camera.aspect);
+
+            applyActiveSkin();
+        }
+
+        // ==========================================
+        // 15. КОМБО-ШКАЛА И АНТИЧИТ
+        // ==========================================
+        let heatPoints = 0;
+        let currentMultiplier = 1;
+        let lastMultiplier = 1;
+
+        const AntiCheat = {
+            clickTimes: [],
+            isOverheated: false,
+            maxCPS: 26,
+            cooldownTimer: null,
+
+            validateClick(isAuto = false) {
+                if (this.isOverheated) return false;
+                if (game.vipUpgrades.noOverheat) return true;
+                if (isAuto) return true;
+
+                const now = performance.now();
+                this.clickTimes = this.clickTimes.filter(t => now - t < 1000);
+                this.clickTimes.push(now);
+
+                if (this.clickTimes.length > this.maxCPS) {
+                    this.triggerOverheat("Лимит кликов (>26 CPS)!");
+                    return false;
+                }
+
+                if (this.clickTimes.length >= 14) {
+                    const diffs = [];
+                    for (let i = 1; i < this.clickTimes.length; i++) {
+                        diffs.push(this.clickTimes[i] - this.clickTimes[i - 1]);
+                    }
+                    if ((Math.max(...diffs) - Math.min(...diffs)) < 1.0) {
+                        this.triggerOverheat("Бот-детектор: макрос!");
+                        return false;
+                    }
+                }
+                return true;
+            },
+
+            triggerOverheat(reason) {
+                if (game.vipUpgrades.noOverheat) return;
+
+                this.isOverheated = true;
+                this.clickTimes = [];
+                heatPoints = 0;
+                currentMultiplier = 1;
+
+                Haptics.alarm();
+                document.getElementById('app-body').classList.add('shake');
+                setTimeout(() => document.getElementById('app-body').classList.remove('shake'), 400);
+
+                const alertBox = document.getElementById('overheat-alert');
+                alertBox.classList.remove('hidden');
+                alertBox.innerText = `⚠️ ПЕРЕГРЕВ: ${reason} (Блок: 3с)`;
+
+                updateMultiplierClass();
+                updateMultiplierVisuals();
+
+                clearTimeout(this.cooldownTimer);
+                this.cooldownTimer = setTimeout(() => {
+                    this.isOverheated = false;
+                    alertBox.classList.add('hidden');
+                    updateMultiplierClass();
+                    updateMultiplierVisuals();
+                }, 3000);
+            }
+        };
+
+        function addHeat() {
+            heatPoints = Math.min(100, heatPoints + 4.8);
+            updateHeatState();
+        }
+
+        function updateHeatState() {
+            let newMult = currentMultiplier;
+
+            if (currentMultiplier === 5) {
+                if (heatPoints < 80) {
+                    newMult = heatPoints >= 70 ? 3 : (heatPoints >= 40 ? 2 : 1);
+                }
+            } else if (currentMultiplier === 3) {
+                if (heatPoints >= 90) newMult = 5;
+                else if (heatPoints < 55) {
+                    newMult = heatPoints >= 40 ? 2 : 1;
+                }
+            } else if (currentMultiplier === 2) {
+                if (heatPoints >= 90) newMult = 5;
+                else if (heatPoints >= 70) newMult = 3;
+                else if (heatPoints < 30) {
+                    newMult = 1;
+                }
+            } else {
+                if (heatPoints >= 90) newMult = 5;
+                else if (heatPoints >= 70) newMult = 3;
+                else if (heatPoints >= 40) newMult = 2;
+                else newMult = 1;
+            }
+
+            if (newMult !== currentMultiplier) {
+                const isLevelUp = newMult > currentMultiplier;
+                currentMultiplier = newMult;
+
+                if (isLevelUp) {
+                    Haptics.multiplier();
+                    AudioSys.play('frenzy', 0.5 + (currentMultiplier * 0.1));
+                    const colors = { 2: 0x38bdf8, 3: 0xf59e0b, 5: 0xf43f5e };
+                    triggerShockwave(colors[currentMultiplier] || 0x38bdf8);
+                }
+                lastMultiplier = currentMultiplier;
+                checkAchievements();
+                updateMultiplierClass();
+            }
+
+            updateMultiplierVisuals();
+        }
+
+        function updateMultiplierClass() {
+            const bar = document.getElementById('heat-bar');
+            const badge = document.getElementById('combo-badge');
+            const header = document.getElementById('main-header');
+            const multTag = document.getElementById('mult-cps-tag');
+
+            if (currentMultiplier === 5) {
+                bar.className = 'h-full transition-[width] duration-75 ease-out bg-gradient-to-r from-purple-900 via-rose-600 to-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]';
+                badge.innerText = '🔥 X5 OVERDRIVE 🔥';
+                badge.className = 'px-2.5 py-0.5 rounded-full bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 text-white font-black text-[11px] sm:text-xs shadow-[0_0_25px_rgba(244,63,94,1)] animate-bounce border-2 border-white tracking-wider';
+                header.style.borderColor = '#f43f5e';
+                header.style.boxShadow = '0 0 35px rgba(244,63,94,0.55)';
+                multTag.className = 'text-[11px] px-1.5 py-0.5 rounded bg-rose-600 text-white font-black animate-pulse shadow-md';
+                sparkMat.opacity = 0.9;
+                laserMat.opacity = 0.7;
+                applyReactorColor(0xf43f5e);
+            } else if (currentMultiplier === 3) {
+                bar.className = 'h-full transition-[width] duration-75 ease-out bg-gradient-to-r from-blue-900 via-sky-600 to-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.6)]';
+                badge.innerText = '⚡ X3 ТУРБО';
+                badge.className = 'px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[11px] sm:text-xs shadow-[0_0_18px_rgba(245,158,11,0.7)] border border-amber-300 tracking-wider';
+                header.style.borderColor = '#f59e0b';
+                header.style.boxShadow = '0 0 20px rgba(245,158,11,0.25)';
+                multTag.className = 'text-[10px] px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 font-black';
+                sparkMat.opacity = 0.0;
+                laserMat.opacity = 0.45;
+                applyReactorColor(0xf59e0b);
+            } else if (currentMultiplier === 2) {
+                bar.className = 'h-full transition-[width] duration-75 ease-out bg-gradient-to-r from-blue-950 via-blue-700 to-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.5)]';
+                badge.innerText = '✨ X2 РАЗГОН';
+                badge.className = 'px-2.5 py-0.5 rounded-full bg-sky-500 text-slate-950 font-bold text-[11px] sm:text-xs border border-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.4)]';
+                header.style.borderColor = '#0284c7';
+                header.style.boxShadow = '0 0 15px rgba(14,165,233,0.15)';
+                multTag.className = 'text-[10px] px-1 py-0.2 rounded bg-sky-500 text-slate-950 font-bold';
+                sparkMat.opacity = 0.0;
+                laserMat.opacity = 0.3;
+                applyReactorColor(0x38bdf8);
+            } else {
+                bar.className = 'h-full transition-[width] duration-75 ease-out bg-gradient-to-r from-slate-950 via-slate-900 to-blue-900';
+                badge.innerText = 'X1 СТАНДАРТ';
+                badge.className = 'px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-bold text-[11px] sm:text-xs';
+                header.style.borderColor = '#334155';
+                header.style.boxShadow = 'none';
+                multTag.className = 'text-[10px] px-1 py-0.2 rounded bg-slate-800 text-slate-400 font-semibold';
+                sparkMat.opacity = 0.0;
+                laserMat.opacity = 0.15;
+                applyReactorColor(0x0284c7);
+            }
+        }
+
+        let cachedWidth = '';
+        let cachedPercent = '';
+
+        function updateMultiplierVisuals() {
+            const bar = document.getElementById('heat-bar');
+            const multTag = document.getElementById('mult-cps-tag');
+            const percentLabel = document.getElementById('heat-percent');
+
+            const newWidth = Math.min(100, Math.max(0, heatPoints)).toFixed(1) + '%';
+            if (cachedWidth !== newWidth) {
+                bar.style.width = newWidth;
+                cachedWidth = newWidth;
+            }
+
+            const newPercent = Math.floor(heatPoints) + '%';
+            if (cachedPercent !== newPercent) {
+                percentLabel.innerText = newPercent;
+                cachedPercent = newPercent;
+            }
+
+            multTag.innerText = `x${currentMultiplier}`;
+            AmbienceEngine.update(currentMultiplier, heatPoints);
+        }
+
+        let lastHeatTick = performance.now();
+        setInterval(() => {
+            const now = performance.now();
+            const dt = Math.min((now - lastHeatTick) / 1000, 0.5);
+            lastHeatTick = now;
+
+            if (heatPoints > 0) {
+                let coolPerSec = 5.0;
+                if (currentMultiplier === 5) coolPerSec = 18.0;
+                else if (currentMultiplier === 3) coolPerSec = 10.0;
+                else if (currentMultiplier === 2) coolPerSec = 7.0;
+                else coolPerSec = 4.5;
+
+                const prestigeCoolingFactor = Math.max(0.4, 1 - (game.prestigeUpgrades.q_cooling * 0.12));
+                const eventCoolingFactor = (activeGlobalEvent && activeGlobalEvent.id === 'nitrogen') ? 0.5 : 1.0;
+
+                coolPerSec = coolPerSec * prestigeCoolingFactor * eventCoolingFactor;
+
+                heatPoints = Math.max(0, heatPoints - (coolPerSec * dt));
+                updateHeatState();
+            }
+        }, 40);
+
+        // ==========================================
+        // 16. КЛИКИ ПО ЭКРАНУ
+        // ==========================================
+        function executeClick(clientX, clientY, isAuto = false) {
+            if (isPrestiging) return;
+
+            AudioSys.unlock();
+            if (!AntiCheat.validateClick(isAuto)) return;
+
+            if (!isAuto) {
+                Haptics.tap();
+                trigger3DTapBurst();
+                game.stats.totalClicks = (game.stats.totalClicks || 0) + 1;
+            }
+            AudioSys.play('tap', 0.35);
+            addHeat();
+
+            const prestigeClickMultiplier = 1 + (game.prestigeUpgrades.q_click * 0.2);
+            const vipMultiplier = game.vipUpgrades.permX2 ? 2 : 1;
+            const clickVal = 1 * currentMultiplier * prestigeClickMultiplier * vipMultiplier * (econ.isBlackout ? 0.2 : 1);
+            
+            game.money += clickVal;
+            game.sessionMoney += clickVal;
+            game.lifetimeMoney += clickVal;
+
+            updateMoneyDisplay();
+
+            baseRoot.scale.set(1.03, 0.97, 1.03);
+            setTimeout(() => {
+                if (!isPrestiging) baseRoot.scale.set(1, 1, 1);
+            }, 75);
+
+            if (!isAuto) {
+                const el = document.createElement('div');
+                let color = 'text-emerald-400 text-xs';
+                if (currentMultiplier === 2) color = 'text-sky-300 text-sm font-bold';
+                if (currentMultiplier === 3) color = 'text-amber-300 text-base font-extrabold';
+                if (currentMultiplier === 5) color = 'text-rose-400 text-xl font-black';
+
+                el.className = `floating-text ${color}`;
+                el.innerText = `+${clickVal.toFixed(1)}$`;
+                el.style.left = clientX + 'px';
+                el.style.top = clientY + 'px';
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 750);
+            }
+
+            checkAchievements();
+        }
+
+        window.addEventListener('pointerdown', (e) => {
+            if (isPrestiging) return;
+            if (e.target.closest('#shop-sidebar') || e.target.closest('header') || e.target.closest('#incident-box') || e.target.closest('#toast-container') || e.target.closest('#mobile-menu-btn') || e.target.closest('#offline-modal') || e.target.closest('#author-support-modal') || e.target.closest('#daily-reward-modal')) return;
+            executeClick(e.clientX, e.clientY, false);
+        });
+
+        let lastAutoClickTick = 0;
+        setInterval(() => {
+            if (document.hidden) return;
+
+            const lvl = game.vipUpgrades.autoclickLevel || 0;
+            if (lvl > 0 && !isPrestiging && !AntiCheat.isOverheated) {
+                const cps = AUTOCLICK_SPEEDS[lvl];
+                const intervalNeeded = 1000 / cps;
+                const now = performance.now();
+                if (now - lastAutoClickTick >= intervalNeeded) {
+                    lastAutoClickTick = now;
+                    const targetX = window.innerWidth * (window.innerWidth > 640 ? 0.65 : 0.5);
+                    const targetY = window.innerHeight * 0.45;
+                    executeClick(targetX, targetY, true);
+                }
+            }
+        }, 30);
+
+        // ==========================================
+        // 17. ЭКОНОМИКА И ИВЕНТЫ
+        // ==========================================
+        let econ = {
+            grossCPS: 0,
+            totalMaint: 0,
+            netCPS: 0,
+            totalPowerGen: 6,
+            totalPowerUsed: 0,
+            freePower: 6,
+            isBlackout: false
+        };
+
+        function calculateEconomy() {
+            let gross = 0;
+            let maint = 0;
+            let powerUsed = 0;
+            let rawPowerGen = game.basePowerCapacity;
+
+            const prestigeIncomeBonus = 1 + (game.prestigeUpgrades.q_income * 0.25);
+            const vipMultiplier = game.vipUpgrades.permX2 ? 2 : 1;
+            const isEventCrypto = activeGlobalEvent && activeGlobalEvent.id === 'crypto';
+            const isEventStorm = activeGlobalEvent && activeGlobalEvent.id === 'storm';
+
+            BUILDINGS.income.forEach(b => {
+                const count = game.counts[b.id] || 0;
+                gross += count * b.cps * prestigeIncomeBonus * vipMultiplier * (isEventCrypto ? 2 : 1);
+                maint += count * b.maint;
+                powerUsed += count * b.powerUse;
+            });
+
+            BUILDINGS.power.forEach(b => {
+                const count = game.counts[b.id] || 0;
+                rawPowerGen += count * b.powerGen;
+                maint += count * b.maint;
+            });
+
+            if (isEventStorm) rawPowerGen *= 2;
+
+            const effectivePowerGen = Math.max(0, rawPowerGen - (game.consumedGridPower || 0));
+
+            econ.totalPowerGen = effectivePowerGen;
+            econ.totalPowerUsed = powerUsed;
+            econ.freePower = Math.max(0, effectivePowerGen - powerUsed);
+            econ.isBlackout = powerUsed > effectivePowerGen;
+
+            // Запоминание пиковой мощности (не сбрасывает ачивку)
+            game.stats.peakPower = Math.max(game.stats.peakPower || 0, effectivePowerGen);
+
+            const effectiveGross = econ.isBlackout ? gross * 0.2 : gross;
+            econ.grossCPS = effectiveGross;
+            econ.totalMaint = maint;
+            econ.netCPS = effectiveGross - maint;
+        }
+
+        const GLOBAL_EVENTS = [
+            { id: 'crypto', title: "КРИПТО-РАЛЛИ (Доход x2)", icon: "📈", duration: 20 },
+            { id: 'storm', title: "ИОННАЯ БУРЯ (Энергия x2)", icon: "⚡", duration: 20 },
+            { id: 'nitrogen', title: "ЖИДКИЙ АЗОТ (Спад x0.5)", icon: "❄️", duration: 20 }
+        ];
+
+        let activeGlobalEvent = null;
+        let globalEventTimeLeft = 0;
+
+        function triggerGlobalEvent() {
+            if (activeGlobalEvent) return;
+            const ev = GLOBAL_EVENTS[Math.floor(Math.random() * GLOBAL_EVENTS.length)];
+            activeGlobalEvent = ev;
+            globalEventTimeLeft = ev.duration;
+
+            const banner = document.getElementById('global-event-banner');
+            document.getElementById('event-icon').innerText = ev.icon;
+            document.getElementById('event-title').innerText = ev.title;
+            banner.classList.remove('hidden');
+
+            showToast("Глобальное событие!", ev.title, "gold");
+
+            const evInterval = setInterval(() => {
+                globalEventTimeLeft -= 0.1;
+                document.getElementById('event-timer').innerText = Math.max(0, globalEventTimeLeft).toFixed(1) + 's';
+                if (globalEventTimeLeft <= 0) {
+                    clearInterval(evInterval);
+                    banner.classList.add('hidden');
+                    activeGlobalEvent = null;
+                    calculateEconomy();
+                    updateUI();
+                }
+            }, 100);
+
+            calculateEconomy();
+            updateUI();
+        }
+
+        setInterval(() => {
+            if (Math.random() < 0.6 && !activeGlobalEvent) {
+                triggerGlobalEvent();
+            }
+        }, 65000);
+
+        // ========================================================
+        // ПРОВЕРКА ДОСТИЖЕНИЙ С ТРОТТЛИНГОМ (60+ FPS)
+        // ========================================================
+        function getAchievementProgress(ach) {
+            let current = 0;
+            if (ach.type === 'clicks') current = game.stats.totalClicks || 0;
+            else if (ach.type === 'servers') current = game.counts['i1'] || 0;
+            else if (ach.type === 'mult') current = currentMultiplier;
+            else if (ach.type === 'floors') {
+                const total = Object.values(game.counts).reduce((a, b) => a + b, 0);
+                current = Math.min(1 + Math.floor(total / 3), 16);
+            }
+            else if (ach.type === 'lifetime') current = game.lifetimeMoney || 0;
+            else if (ach.type === 'prestige') current = game.stats.totalPrestigeCount || 0;
+            else if (ach.type === 'cores') current = game.prestigeCores || 0;
+            else if (ach.type === 'incidents') current = game.stats.incidentsResolved || 0;
+            else if (ach.type === 'power') current = game.stats.peakPower || econ.totalPowerGen || 0;
+            else if (ach.type === 'sells') current = game.stats.buildingsSold || 0;
+            else if (ach.type === 'synth') current = game.stats.gemsSynthesized || 0;
+            else if (ach.type === 'skins') current = game.unlockedSkins.length > 1 ? 1 : 0;
+
+            const isDone = current >= ach.target;
+            const pct = Math.min(100, Math.floor((current / ach.target) * 100));
+            return { current, target: ach.target, isDone, pct };
+        }
+
+        let lastAchCheckTime = 0;
+        function checkAchievements() {
+            const now = performance.now();
+            if (now - lastAchCheckTime < 250) return; // Проверка не чаще 4 раз в секунду
+            lastAchCheckTime = now;
+
+            ACHIEVEMENTS_DEF.forEach(ach => {
+                const state = game.achievementsState[ach.id] || { claimed: false, notified: false };
+                const prog = getAchievementProgress(ach);
+
+                if (prog.isDone && !state.notified) {
+                    state.notified = true;
+                    game.achievementsState[ach.id] = state;
+                    showToast("🏆 ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО", `${ach.name} (+${ach.gems} 💎)`, "gold");
+                    saveGame();
+                }
+            });
+        }
+
+        function claimAchievementReward(achId) {
+            const ach = ACHIEVEMENTS_DEF.find(a => a.id === achId);
+            if (!ach) return;
+
+            const state = game.achievementsState[achId] || { claimed: false, notified: false };
+            const prog = getAchievementProgress(ach);
+
+            if (prog.isDone && !state.claimed) {
+                state.claimed = true;
+                state.notified = true;
+                game.achievementsState[achId] = state;
+                addGems(ach.gems, `Награда за ${ach.name}`);
+                AudioSys.playSuccess();
+                saveGame();
+                renderShopStructure();
+            }
+        }
+
+        // КНОПКА «ЗАБРАТЬ ВСЁ» ВО ВКЛАДКЕ «ЦЕЛИ»
+        function claimAllAchievements() {
+            let totalGems = 0;
+            let count = 0;
+
+            ACHIEVEMENTS_DEF.forEach(ach => {
+                const prog = getAchievementProgress(ach);
+                const state = game.achievementsState[ach.id] || { claimed: false, notified: false };
+                if (prog.isDone && !state.claimed) {
+                    state.claimed = true;
+                    state.notified = true;
+                    game.achievementsState[ach.id] = state;
+                    totalGems += ach.gems;
+                    count++;
+                }
+            });
+
+            if (count > 0) {
+                addGems(totalGems, `Сбор всех наград (${count} шт.)`);
+                AudioSys.playSuccess();
+                Haptics.prestige();
+                saveGame();
+                renderShopStructure();
+                showToast("Награды собраны!", `Получено +${totalGems} 💎 за ${count} достижений`, "gold");
+            } else {
+                showToast("Нет готовых наград", "Выполните задания, чтобы забрать кристаллы", "info");
+            }
+        }
+
+        // ==========================================
+        // 18. МАГАЗИН И ВКЛАДКИ
+        // ==========================================
+        const buttonAffordanceCache = {};
+
+        function switchTab(tab) {
+            activeTab = tab;
+            const tabs = ['income', 'power', 'prestige', 'vip', 'achievements'];
+            const multiBar = document.getElementById('multi-buy-bar');
+
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (!btn) return;
+                btn.className = 'py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition-all truncate text-center';
+            });
+
+            const activeBtn = document.getElementById(`tab-btn-${tab}`);
+            if (activeBtn) {
+                if (tab === 'income') activeBtn.className = 'py-1.5 rounded-lg bg-slate-800 text-emerald-400 shadow transition-all truncate text-center';
+                if (tab === 'power') activeBtn.className = 'py-1.5 rounded-lg bg-slate-800 text-sky-400 shadow transition-all truncate text-center';
+                if (tab === 'prestige') activeBtn.className = 'py-1.5 rounded-lg bg-purple-950 text-purple-300 border border-purple-700/60 shadow transition-all truncate text-center';
+                if (tab === 'vip') activeBtn.className = 'py-1.5 rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-500/60 shadow transition-all truncate text-center';
+                if (tab === 'achievements') activeBtn.className = 'py-1.5 rounded-lg bg-amber-950 text-amber-300 border border-amber-500/60 shadow transition-all truncate text-center';
+            }
+
+            if (multiBar) {
+                multiBar.classList.toggle('hidden', tab !== 'income' && tab !== 'power');
+            }
+
+            renderShopStructure();
+            updateShopButtons();
+        }
+
+        function buy(id) {
+            if (activeTab === 'vip') {
+                buyVipUpgrade(id);
+                return;
+            }
+            if (activeTab === 'prestige') {
+                buyPrestigeUpgrade(id);
+                return;
+            }
+
+            const list = activeTab === 'income' ? BUILDINGS.income : BUILDINGS.power;
+            const b = list.find(item => item.id === id);
+            if (!b) return;
+
+            const currentCount = game.counts[id] || 0;
+            const batchInfo = getBatchCostInfo(b, currentCount, buyMultiplier);
+
+            if (batchInfo.canAfford && batchInfo.count > 0) {
+                AudioSys.play('buy', 0.5);
+                game.money -= batchInfo.cost;
+                game.counts[id] = currentCount + batchInfo.count;
+                calculateEconomy();
+                rebuild3DBuilding();
+                checkAchievements();
+                saveGame();
+                updateUI();
+                updateShopButtons();
+            }
+        }
+
+        function buyVipUpgrade(id) {
+            if (id === 'vip_autoclick') {
+                const curLvl = game.vipUpgrades.autoclickLevel || 0;
+                if (curLvl >= 5) return;
+                const nextCost = AUTOCLICK_COSTS[curLvl + 1];
+                if (game.gems >= nextCost) {
+                    AudioSys.play('buy', 0.6);
+                    Haptics.multiplier();
+                    game.gems -= nextCost;
+                    game.vipUpgrades.autoclickLevel = curLvl + 1;
+                    updateGemsUI();
+                    saveGame();
+                    renderShopStructure();
+                    updateShopButtons();
+                    showToast("ИИ Авто-кликер", `Повышен до Ур. ${game.vipUpgrades.autoclickLevel} (${AUTOCLICK_SPEEDS[game.vipUpgrades.autoclickLevel]} кликов/с)`, "gem");
+                }
+                return;
+            }
+
+            const item = BUILDINGS.vip.find(v => v.id === id);
+            if (!item || game.gems < item.cost) return;
+
+            if (id === 'vip_perm_x2' && game.vipUpgrades.permX2) return;
+            if (id === 'vip_no_overheat' && game.vipUpgrades.noOverheat) return;
+
+            AudioSys.play('buy', 0.6);
+            Haptics.multiplier();
+            game.gems -= item.cost;
+
+            if (id === 'vip_perm_x2') {
+                game.vipUpgrades.permX2 = true;
+                calculateEconomy();
+            }
+            if (id === 'vip_no_overheat') game.vipUpgrades.noOverheat = true;
+            if (id === 'vip_warp') {
+                calculateEconomy();
+                const rate = Math.max(50, econ.netCPS * currentMultiplier);
+                const warpMoney = rate * 7200;
+                game.money += warpMoney;
+                game.sessionMoney += warpMoney;
+                game.lifetimeMoney += warpMoney;
+                updateMoneyDisplay();
+                showToast("Квантовый скачок", `Мгновенно начислено: +${formatNumber(warpMoney)} $`, "gem");
+            }
+
+            updateGemsUI();
+            saveGame();
+            updateUI();
+            renderShopStructure();
+            updateShopButtons();
+            showToast("Чёрный Рынок", `${item.name} активирован!`, "gem");
+        }
+
+        function buyPrestigeUpgrade(id) {
+            const b = BUILDINGS.prestige.find(item => item.id === id);
+            const count = game.prestigeUpgrades[id] || 0;
+            const cost = getPrestigeCost(b, count);
+
+            if (game.prestigeCores >= cost) {
+                AudioSys.play('buy', 0.6);
+                game.prestigeCores -= cost;
+                game.prestigeUpgrades[id] = count + 1;
+                calculateEconomy();
+                saveGame();
+                updateShopButtons();
+                updateUI();
+                showToast("Улучшение ядра", `${b.name} повышен до уровня ${count + 1}`, "gold");
+            }
+        }
+
+        function getBuildingDetails(b, type) {
+            if (type === 'income') {
+                return `<span class="text-emerald-400">+${b.cps}$/с</span> | <span class="text-rose-400">-${b.maint}$</span> | <span class="text-amber-400">-${b.powerUse}⚡</span>`;
+            }
+            if (type === 'power') {
+                return `<span class="text-sky-400">+${b.powerGen}⚡</span> | <span class="text-rose-400">-${b.maint}$</span>`;
+            }
+            return `<span class="text-purple-300 font-semibold">${b.desc}</span>`;
+        }
+
+        function renderShopStructure() {
+            const listContainer = document.getElementById('shop-container');
+            for (let k in buttonAffordanceCache) delete buttonAffordanceCache[k];
+            listContainer.innerHTML = '';
+
+            // ВКЛАДКА 🏆 ДОСТИЖЕНИЙ С КНОПКОЙ «ЗАБРАТЬ ВСЁ»
+            if (activeTab === 'achievements') {
+                const totalAch = ACHIEVEMENTS_DEF.length;
+                const completedCount = ACHIEVEMENTS_DEF.filter(a => (game.achievementsState[a.id] || {}).claimed).length;
+
+                // Подсчёт наград, доступных для забора прямо сейчас
+                const claimableAchievements = ACHIEVEMENTS_DEF.filter(a => {
+                    const prog = getAchievementProgress(a);
+                    const state = game.achievementsState[a.id] || { claimed: false };
+                    return prog.isDone && !state.claimed;
+                });
+                const totalClaimableGems = claimableAchievements.reduce((sum, a) => sum + a.gems, 0);
+
+                const headerCard = document.createElement('div');
+                headerCard.className = 'bg-gradient-to-r from-amber-950/80 to-slate-900 border border-amber-500/60 p-2.5 rounded-xl flex flex-col gap-1.5 mb-1 text-xs shadow-md';
+                headerCard.innerHTML = `
+                    <div class="flex justify-between items-center font-bold text-amber-300">
+                        <span>🏆 ЦЕЛИ СИНДИКАТА</span>
+                        <span class="font-mono">${completedCount} / ${totalAch}</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                        <div class="bg-gradient-to-r from-amber-500 to-yellow-300 h-full transition-all duration-300" style="width: ${Math.floor((completedCount / totalAch) * 100)}%;"></div>
+                    </div>
+                    
+                    <!-- КНОПКА ЗАБРАТЬ ВСЁ -->
+                    <button onclick="claimAllAchievements()" class="w-full mt-1 py-1.5 px-2 rounded-lg font-black text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${
+                        claimableAchievements.length > 0 
+                            ? 'bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 shadow-md active:scale-95 animate-pulse cursor-pointer' 
+                            : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-60'
+                    }">
+                        <span>🎁 Забрать все награды</span>
+                        <span class="font-mono ${claimableAchievements.length > 0 ? 'text-slate-950' : 'text-slate-500'}">(+${totalClaimableGems} 💎)</span>
+                    </button>
+                `;
+                listContainer.appendChild(headerCard);
+
+                ACHIEVEMENTS_DEF.forEach(ach => {
+                    const prog = getAchievementProgress(ach);
+                    const state = game.achievementsState[ach.id] || { claimed: false };
+                    const isClaimed = state.claimed;
+                    const canClaim = prog.isDone && !isClaimed;
+
+                    const row = document.createElement('div');
+                    row.className = `p-2 rounded-xl border flex flex-col gap-1 text-xs ${
+                        isClaimed 
+                            ? 'bg-slate-950/50 border-slate-800/80 opacity-60' 
+                            : (canClaim ? 'bg-amber-950/50 border-amber-500/80 shadow-[0_0_12px_rgba(245,158,11,0.2)]' : 'bg-slate-900/80 border-slate-800')
+                    }`;
+                    row.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="pr-1">
+                                <p class="font-bold text-slate-200">${ach.name}</p>
+                                <p class="text-[9px] text-slate-400 leading-tight">${ach.desc}</p>
+                            </div>
+                            <span class="font-mono text-cyan-300 font-bold shrink-0 text-[11px]">+${ach.gems} 💎</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2 mt-0.5">
+                            <div class="flex-1 bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                                <div class="bg-gradient-to-r from-amber-600 to-yellow-400 h-full" style="width: ${prog.pct}%;"></div>
+                            </div>
+                            <span class="text-[8px] font-mono text-slate-400">${formatNumber(prog.current)} / ${formatNumber(prog.target)}</span>
+                            <button onclick="claimAchievementReward('${ach.id}')" class="px-2 py-0.5 rounded text-[9px] font-black transition-all ${
+                                isClaimed 
+                                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
+                                    : (canClaim ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 active:scale-95 shadow cursor-pointer animate-pulse' : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-60')
+                            }">
+                                ${isClaimed ? '✓ ВЗЯТО' : (canClaim ? 'ЗАБРАТЬ' : 'В ПРОЦЕССЕ')}
+                            </button>
+                        </div>
+                    `;
+                    listContainer.appendChild(row);
+                });
+                return;
+            }
+
+            // ВКЛАДКА VIP
+            if (activeTab === 'vip') {
+                const freePower = Math.max(0, econ.totalPowerGen - econ.totalPowerUsed);
+
+                const synthCard = document.createElement('div');
+                synthCard.className = 'bg-gradient-to-b from-cyan-950/90 to-slate-900 border-2 border-cyan-500/70 p-2.5 rounded-xl flex flex-col gap-2 shadow-lg mb-1';
+                synthCard.innerHTML = `
+                    <div class="flex justify-between items-center text-xs font-black text-cyan-300">
+                        <span>⚡ СИНТЕЗ ИЗ ЭНЕРГОСЕТИ</span>
+                        <span class="text-[9px] text-amber-400 font-mono font-bold">500 ⚡ = 1 💎</span>
+                    </div>
+                    <div class="flex justify-between items-center text-[10px] bg-slate-950/80 p-1.5 rounded-lg border border-cyan-900/50">
+                        <span class="text-slate-300">Свободно в сети:</span>
+                        <span id="vip-free-power-label" class="font-bold text-amber-300 font-mono">${formatNumber(freePower)} ⚡ (кВт)</span>
+                    </div>
+                    <p class="text-[9px] text-slate-400 leading-tight">Направьте мощность генерации электростанций (⚡ кВт) в синтез нанокристаллов.</p>
+                    <div class="grid grid-cols-2 gap-1.5 pt-0.5">
+                        <button onclick="exchangeGridPowerForGems(1)" class="bg-slate-950/90 hover:bg-slate-800 border border-cyan-500/50 hover:border-cyan-400 p-1.5 rounded-lg text-left flex flex-col transition-all active:scale-95">
+                            <span class="text-[10px] font-black text-cyan-300">+1 💎</span>
+                            <span class="text-[9px] text-amber-300 font-mono font-bold">500 ⚡</span>
+                        </button>
+                        <button onclick="exchangeGridPowerForGems(10)" class="bg-slate-950/90 hover:bg-slate-800 border border-cyan-500/50 hover:border-cyan-400 p-1.5 rounded-lg text-left flex flex-col transition-all active:scale-95">
+                            <span class="text-[10px] font-black text-cyan-300">+10 💎</span>
+                            <span class="text-[9px] text-amber-300 font-mono font-bold">5 000 ⚡</span>
+                        </button>
+                        <button onclick="exchangeGridPowerForGems(50)" class="bg-slate-950/90 hover:bg-slate-800 border border-cyan-500/50 hover:border-cyan-400 p-1.5 rounded-lg text-left flex flex-col transition-all active:scale-95">
+                            <span class="text-[10px] font-black text-cyan-300">+50 💎</span>
+                            <span class="text-[9px] text-amber-300 font-mono font-bold">25 000 ⚡</span>
+                        </button>
+                        <button onclick="exchangeGridPowerForGems(100)" class="bg-slate-950/90 hover:bg-slate-800 border border-cyan-500/50 hover:border-cyan-400 p-1.5 rounded-lg text-left flex flex-col transition-all active:scale-95">
+                            <span class="text-[10px] font-black text-cyan-300">+100 💎</span>
+                            <span class="text-[9px] text-amber-300 font-mono font-bold">50 000 ⚡</span>
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(synthCard);
+
+                const skinsBlock = document.createElement('div');
+                skinsBlock.className = 'bg-slate-950/90 border border-purple-500/60 p-2.5 rounded-xl flex flex-col gap-1.5 shadow mb-1';
+                skinsBlock.innerHTML = `
+                    <div class="flex justify-between items-center text-xs font-black text-purple-300">
+                        <span>🎨 ГАРДЕРОБ 3D-СКИНОФ</span>
+                        <span class="text-[9px] text-purple-400">КАСТОМИЗАЦИЯ</span>
+                    </div>
+                    <div class="flex flex-col gap-1 pt-1">
+                        ${SKINS.map(s => {
+                            const isOwned = game.unlockedSkins.includes(s.id);
+                            const isActive = game.activeSkin === s.id;
+                            return `
+                                <div class="flex items-center justify-between p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-xs">
+                                    <div class="pr-1 leading-tight">
+                                        <p class="font-bold text-slate-200">${s.name}</p>
+                                        <p class="text-[8px] text-slate-400">${s.desc}</p>
+                                    </div>
+                                    <button onclick="selectSkin('${s.id}')" class="px-2 py-1 rounded-md font-bold text-[10px] transition-all whitespace-nowrap ${
+                                        isActive 
+                                            ? 'bg-purple-600 text-white shadow' 
+                                            : (isOwned ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-cyan-500 text-slate-950 hover:bg-cyan-400 active:scale-95')
+                                    }">
+                                        ${isActive ? 'АКТИВЕН' : (isOwned ? 'ВЫБРАТЬ' : `${s.cost} 💎`)}
+                                    </button>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                listContainer.appendChild(skinsBlock);
+
+                const autoLvl = game.vipUpgrades.autoclickLevel || 0;
+                const isAutoMax = autoLvl >= 5;
+                const nextAutoCost = isAutoMax ? 0 : AUTOCLICK_COSTS[autoLvl + 1];
+                const autoCard = document.createElement('div');
+                autoCard.className = 'flex items-center justify-between bg-cyan-950/30 p-2 rounded-xl border border-cyan-900/50 text-xs mb-0.5';
+                autoCard.dataset.id = 'vip_autoclick';
+                autoCard.innerHTML = `
+                    <div class="pr-1.5">
+                        <p class="font-bold text-slate-200">ИИ Авто-кликер</p>
+                        <p class="text-[9px] text-slate-400">Скорость: <b class="text-cyan-300">${AUTOCLICK_SPEEDS[autoLvl]} CPS</b> (Ур. ${autoLvl}/5)</p>
+                        <p class="text-[11px] font-semibold text-cyan-300 mt-0.5">${isAutoMax ? 'МАКС. УРОВЕНЬ' : `${nextAutoCost} 💎`}</p>
+                    </div>
+                    <button data-btn class="px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap text-xs">
+                        ${isAutoMax ? 'МАКС' : 'ПРОКАЧАТЬ'}
+                    </button>
+                `;
+                autoCard.querySelector('[data-btn]').onclick = () => buy('vip_autoclick');
+                listContainer.appendChild(autoCard);
+
+                BUILDINGS.vip.filter(v => v.id !== 'vip_autoclick').forEach(b => {
+                    let isOwned = false;
+                    if (b.id === 'vip_perm_x2' && game.vipUpgrades.permX2) isOwned = true;
+                    if (b.id === 'vip_no_overheat' && game.vipUpgrades.noOverheat) isOwned = true;
+
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between bg-cyan-950/20 p-2 rounded-xl border border-cyan-900/40 text-xs';
+                    row.dataset.id = b.id;
+                    row.innerHTML = `
+                        <div class="pr-1.5">
+                            <p class="font-bold text-slate-200">${b.name}</p>
+                            <p class="text-[9px] text-slate-400 leading-tight">${b.desc}</p>
+                            <p class="text-[11px] font-semibold text-cyan-300 mt-0.5">${b.cost} 💎</p>
+                        </div>
+                        <button data-btn class="px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap text-xs">
+                            ${isOwned ? 'АКТИВНО' : 'КУПИТЬ'}
+                        </button>
+                    `;
+                    row.querySelector('[data-btn]').onclick = () => buy(b.id);
+                    listContainer.appendChild(row);
+                });
+                return;
+            }
+
+            // Вкладка Дохода
+            if (activeTab === 'income') {
+                const offCost = getOfflineUpgradeCost();
+                const effPercent = Math.round((0.20 + (game.offlineLevel * 0.05)) * (1 + ((game.prestigeUpgrades.q_offline || 0) * 0.25)) * 100);
+                const maxH = 2 + (game.offlineLevel * 2);
+                const isMax = game.offlineLevel >= 10;
+
+                const offCard = document.createElement('div');
+                offCard.className = 'bg-gradient-to-r from-sky-950/70 to-slate-900 border border-sky-500/50 p-2.5 rounded-xl flex flex-col gap-1.5 shadow-md mb-1';
+                offCard.innerHTML = `
+                    <div class="flex justify-between items-center text-xs font-bold text-sky-300">
+                        <span>🛰️ Офлайн-Автопилот</span>
+                        <span class="text-[10px] text-sky-400 font-mono">Ур. ${game.offlineLevel}/10</span>
+                    </div>
+                    <div class="text-[9px] text-slate-300 flex justify-between">
+                        <span>Добыча: <b class="text-emerald-400">${effPercent}%</b> <span class="text-sky-400 font-normal">(+5%/ур)</span></span>
+                        <span>Хранилище: <b class="text-amber-300">${maxH} ч.</b></span>
+                    </div>
+                    <button onclick="buyOfflineUpgrade()" class="w-full py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        isMax ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : (game.money >= offCost ? 'bg-sky-500 hover:bg-sky-400 text-slate-950 shadow active:scale-95' : 'bg-slate-700 text-slate-400 opacity-60 cursor-not-allowed')
+                    }">
+                        ${isMax ? 'МАКС. УРОВЕНЬ' : `Улучшить (+5%) • ${formatNumber(offCost)} $`}
+                    </button>
+                `;
+                listContainer.appendChild(offCard);
+            }
+
+            // Вкладка Престижа
+            if (activeTab === 'prestige') {
+                const pendingCores = getPendingCores();
+                const nextCost = getNextCorePrice(pendingCores);
+                const progressPct = pendingCores > 0 
+                    ? Math.min(100, Math.floor((game.sessionMoney / nextCost) * 100))
+                    : Math.min(100, Math.floor((game.sessionMoney / PRESTIGE_BASE_PRICE) * 100));
+
+                const prestigeHeader = document.createElement('div');
+                prestigeHeader.className = 'bg-gradient-to-b from-purple-950/90 to-slate-900 border-2 border-purple-500/60 p-2.5 rounded-xl flex flex-col gap-2 shadow-lg';
+                prestigeHeader.id = 'prestige-fusion-card';
+                prestigeHeader.innerHTML = `
+                    <div class="flex justify-between items-center text-xs font-black text-purple-300">
+                        <span>КВАНТОВОЕ СЛИЯНИЕ</span>
+                        <span id="prestige-card-cores" class="font-mono text-purple-300 bg-purple-900/60 px-1.5 py-0.5 rounded border border-purple-700/60">+${pendingCores} ⚛️</span>
+                    </div>
+
+                    <div class="bg-slate-950/80 border border-purple-900/50 rounded-lg p-2 flex flex-col gap-1 text-[10px]">
+                        <div class="flex justify-between text-slate-300">
+                            <span>Минимум для слияния:</span>
+                            <span class="font-bold text-amber-300 font-mono">${formatNumber(PRESTIGE_BASE_PRICE)} $</span>
+                        </div>
+                        <div class="flex justify-between text-slate-300">
+                            <span>Капитал текущего цикла:</span>
+                            <span id="prestige-card-session-money" class="font-bold text-emerald-400 font-mono">${formatNumber(game.sessionMoney)} $</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400 text-[9px]">
+                            <span>Цена след. ядра (+1 ⚛️):</span>
+                            <span id="prestige-card-next-cost" class="font-mono text-purple-300">${formatNumber(nextCost)} $</span>
+                        </div>
+
+                        <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800 mt-1">
+                            <div id="prestige-card-progress" class="bg-gradient-to-r from-purple-600 via-pink-500 to-amber-400 h-full transition-all duration-300" style="width: ${progressPct}%;"></div>
+                        </div>
+                    </div>
+
+                    <p class="text-[9px] text-slate-400 leading-tight">Слияние обнуляет текущие постройки и доллары в обмен на постоянные квантовые ядра сингулярности.</p>
+
+                    <button id="prestige-fusion-btn" onclick="triggerPrestige()" class="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-black rounded-lg text-xs tracking-wide shadow-md transition-all ${pendingCores > 0 ? '' : 'opacity-50 cursor-not-allowed'}">
+                        ${pendingCores > 0 
+                            ? `⚛️ Совершить Слияние (+${pendingCores} ядер)` 
+                            : `Нужно ещё: ${formatNumber(PRESTIGE_BASE_PRICE - game.sessionMoney)} $`}
+                    </button>
+                `;
+                listContainer.appendChild(prestigeHeader);
+
+                BUILDINGS.prestige.forEach(b => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between bg-purple-950/30 p-2 rounded-xl border border-purple-900/50 text-xs';
+                    row.dataset.id = b.id;
+                    row.innerHTML = `
+                        <div class="pr-1.5">
+                            <p class="font-bold text-slate-200">${b.name}</p>
+                            <p class="text-[9px] text-slate-400 leading-tight">${getBuildingDetails(b, 'prestige')}</p>
+                            <p class="text-[11px] font-semibold text-purple-300 mt-0.5" data-cost></p>
+                        </div>
+                        <button data-btn class="px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap text-xs">
+                            <span data-count></span>
+                        </button>
+                    `;
+                    row.querySelector('[data-btn]').onclick = () => buy(b.id);
+                    listContainer.appendChild(row);
+                });
+                return;
+            }
+
+            // Доход и Энергия
+            const items = activeTab === 'income' ? BUILDINGS.income : BUILDINGS.power;
+            items.forEach(b => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between bg-slate-800/60 p-2 rounded-xl border border-slate-700/60 text-xs gap-1';
+                row.dataset.id = b.id;
+                row.innerHTML = `
+                    <div class="flex-1 pr-1 min-w-0">
+                        <p class="font-bold text-slate-200 truncate">${b.name}</p>
+                        <p class="text-[9px] text-slate-400 leading-tight">${getBuildingDetails(b, activeTab)}</p>
+                        <p class="text-[11px] font-semibold text-emerald-400 mt-0.5" data-cost></p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button data-sell-btn class="hidden px-2 py-1.5 rounded-lg font-bold transition-all text-[10px] bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-300 active:scale-95 whitespace-nowrap" title="Демонтировать за 70% стоимости">
+                            −
+                        </button>
+                        <button data-btn class="px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap text-xs min-w-[70px] text-center">
+                            <span data-count></span>
+                        </button>
+                    </div>
+                `;
+                row.querySelector('[data-btn]').onclick = () => buy(b.id);
+                row.querySelector('[data-sell-btn]').onclick = () => sellBuilding(b.id);
+                listContainer.appendChild(row);
+            });
+        }
+
+        function updateShopButtons() {
+            const listContainer = document.getElementById('shop-container');
+
+            if (activeTab === 'achievements') return;
+
+            if (activeTab === 'vip') {
+                const freePower = Math.max(0, econ.totalPowerGen - econ.totalPowerUsed);
+                const powerLabel = document.getElementById('vip-free-power-label');
+                if (powerLabel) powerLabel.innerText = `${formatNumber(freePower)} ⚡ (кВт)`;
+
+                const autoCard = listContainer.querySelector(`[data-id="vip_autoclick"]`);
+                if (autoCard) {
+                    const lvl = game.vipUpgrades.autoclickLevel || 0;
+                    const isMax = lvl >= 5;
+                    const cost = isMax ? 0 : AUTOCLICK_COSTS[lvl + 1];
+                    const canAfford = game.gems >= cost;
+                    const btn = autoCard.querySelector('[data-btn]');
+                    if (isMax) {
+                        btn.className = "px-2.5 py-1.5 rounded-lg font-bold whitespace-nowrap text-xs bg-slate-800 text-slate-500 cursor-not-allowed";
+                    } else {
+                        btn.className = `px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap text-xs ${
+                            canAfford ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 cursor-pointer shadow-sm active:scale-95'
+                                      : 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
+                        }`;
+                    }
+                }
+
+                BUILDINGS.vip.filter(v => v.id !== 'vip_autoclick').forEach(b => {
+                    const row = listContainer.querySelector(`[data-id="${b.id}"]`);
+                    if (!row) return;
+
+                    let isOwned = false;
+                    if (b.id === 'vip_perm_x2' && game.vipUpgrades.permX2) isOwned = true;
+                    if (b.id === 'vip_no_overheat' && game.vipUpgrades.noOverheat) isOwned = true;
+
+                    const canAfford = game.gems >= b.cost;
+                    const btn = row.querySelector('[data-btn]');
+
+                    if (isOwned) {
+                        btn.innerText = "КУПЛЕНО";
+                        btn.className = "px-2.5 py-1.5 rounded-lg font-bold whitespace-nowrap text-xs bg-slate-800 text-slate-500 cursor-not-allowed";
+                    } else {
+                        btn.innerText = `КУПИТЬ (${b.cost} 💎)`;
+                        btn.className = `px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap text-xs ${
+                            canAfford ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 cursor-pointer shadow-sm active:scale-95'
+                                      : 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
+                        }`;
+                    }
+                });
+                return;
+            }
+
+            if (activeTab === 'prestige') {
+                const pendingCores = getPendingCores();
+                const nextCost = getNextCorePrice(pendingCores);
+                const progressPct = pendingCores > 0 
+                    ? Math.min(100, Math.floor((game.sessionMoney / nextCost) * 100))
+                    : Math.min(100, Math.floor((game.sessionMoney / PRESTIGE_BASE_PRICE) * 100));
+
+                const coresTag = document.getElementById('prestige-card-cores');
+                const sessionMoneyEl = document.getElementById('prestige-card-session-money');
+                const nextCostEl = document.getElementById('prestige-card-next-cost');
+                const progressEl = document.getElementById('prestige-card-progress');
+                const fusionBtn = document.getElementById('prestige-fusion-btn');
+
+                if (coresTag) coresTag.innerText = `+${pendingCores} ⚛️`;
+                if (sessionMoneyEl) sessionMoneyEl.innerText = `${formatNumber(game.sessionMoney)} $`;
+                if (nextCostEl) nextCostEl.innerText = `${formatNumber(nextCost)} $`;
+                if (progressEl) progressEl.style.width = `${progressPct}%`;
+                
+                if (fusionBtn) {
+                    if (pendingCores > 0) {
+                        fusionBtn.innerText = `⚛️ Совершить Слияние (+${pendingCores} ядер)`;
+                        fusionBtn.className = "w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-black rounded-lg text-xs tracking-wide shadow-md transition-all cursor-pointer";
+                    } else {
+                        const needed = Math.max(0, PRESTIGE_BASE_PRICE - game.sessionMoney);
+                        fusionBtn.innerText = `Нужно ещё: ${formatNumber(needed)} $`;
+                        fusionBtn.className = "w-full py-2 bg-slate-800 text-slate-500 font-black rounded-lg text-xs tracking-wide opacity-50 cursor-not-allowed transition-all";
+                    }
+                }
+
+                BUILDINGS.prestige.forEach(b => {
+                    const row = listContainer.querySelector(`[data-id="${b.id}"]`);
+                    if (!row) return;
+
+                    const count = game.prestigeUpgrades[b.id] || 0;
+                    const cost = getPrestigeCost(b, count);
+                    const canBuy = game.prestigeCores >= cost;
+                    const btn = row.querySelector('[data-btn]');
+                    const costEl = row.querySelector('[data-cost]');
+                    const countEl = row.querySelector('[data-count]');
+
+                    costEl.innerText = `${cost} ⚛️`;
+                    countEl.innerText = `Lvl ${count}`;
+
+                    if (buttonAffordanceCache[b.id] !== canBuy) {
+                        buttonAffordanceCache[b.id] = canBuy;
+                        btn.className = `px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap text-xs ${
+                            canBuy ? 'bg-purple-600 hover:bg-purple-500 active:scale-95 text-white cursor-pointer shadow-sm'
+                                   : 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
+                        }`;
+                    }
+                });
+                return;
+            }
+
+            // Доход и Энергия
+            const items = activeTab === 'income' ? BUILDINGS.income : BUILDINGS.power;
+            items.forEach(b => {
+                const row = listContainer.querySelector(`[data-id="${b.id}"]`);
+                if (!row) return;
+
+                const count = game.counts[b.id] || 0;
+                const batchInfo = getBatchCostInfo(b, count, buyMultiplier);
+
+                const btn = row.querySelector('[data-btn]');
+                const sellBtn = row.querySelector('[data-sell-btn]');
+                const costEl = row.querySelector('[data-cost]');
+                const countEl = row.querySelector('[data-count]');
+
+                const costStr = formatNumber(batchInfo.cost) + ' $';
+                if (costEl.innerText !== costStr) costEl.innerText = costStr;
+
+                const countStr = `+${batchInfo.count} (${count})`;
+                if (countEl.innerText !== countStr) countEl.innerText = countStr;
+
+                if (count > 0) {
+                    const refund = Math.floor(getBuildingCost(b, count - 1) * 0.7);
+                    sellBtn.classList.remove('hidden');
+                    sellBtn.innerText = `−${formatNumber(refund)}$`;
+                } else {
+                    sellBtn.classList.add('hidden');
+                }
+
+                if (buttonAffordanceCache[b.id] !== batchInfo.canAfford) {
+                    buttonAffordanceCache[b.id] = batchInfo.canAfford;
+                    btn.className = `px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap text-xs min-w-[70px] text-center ${
+                        batchInfo.canAfford ? 'bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 cursor-pointer shadow-sm'
+                                            : 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
+                    }`;
+                }
+            });
+        }
+
+        function updateMoneyDisplay() {
+            const moneyFormatted = formatNumber(game.money) + ' $';
+            const moneyEl = document.getElementById('money');
+            moneyEl.innerText = moneyFormatted;
+
+            if (game.money < 0) {
+                moneyEl.className = 'text-2xl sm:text-3xl font-black text-rose-500 animate-pulse';
+            } else {
+                moneyEl.className = 'text-2xl sm:text-3xl font-black text-emerald-400';
+            }
+            
+            const sidebarMoneyEl = document.getElementById('sidebar-money');
+            if (sidebarMoneyEl) {
+                sidebarMoneyEl.innerText = moneyFormatted;
+                sidebarMoneyEl.className = game.money < 0 ? 'text-xs font-black text-rose-500 font-mono' : 'text-xs font-black text-emerald-400 font-mono';
+            }
+
+            const debtWarning = document.getElementById('debt-warning');
+            if (debtWarning) {
+                debtWarning.classList.toggle('hidden', game.money >= 0);
+            }
+        }
+
+        // ==========================================
+        // 19. ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ
+        // ==========================================
+        function updateUI() {
+            calculateEconomy();
+            updateMoneyDisplay();
+
+            document.getElementById('quantum-cores-badge').innerText = `${game.prestigeCores} ⚛️`;
+            updateGemsUI();
+            updateDailyBonusButtonStatus();
+            
+            const mult = currentMultiplier;
+            const netVal = econ.netCPS * mult;
+            const netEl = document.getElementById('net-cps');
+
+            if (netVal < -0.04) {
+                netEl.innerText = netVal.toFixed(1);
+                netEl.className = 'text-rose-400 font-bold';
+            } else if (netVal > 0.04) {
+                netEl.innerText = '+' + netVal.toFixed(1);
+                netEl.className = 'text-emerald-400';
+            } else {
+                netEl.innerText = '+0.0';
+                netEl.className = 'text-slate-400';
+            }
+
+            document.getElementById('maint-cost').innerText = econ.totalMaint.toFixed(1);
+            document.getElementById('energy-used').innerText = econ.totalPowerUsed;
+            document.getElementById('energy-total').innerText = econ.totalPowerGen;
+
+            const gridStatus = document.getElementById('grid-status');
+            if (econ.isBlackout) {
+                gridStatus.innerText = 'ДЕФИЦИТ (-80%)';
+                gridStatus.className = 'ml-1 text-[9px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-700 animate-pulse font-black';
+            } else {
+                gridStatus.innerText = 'НОРМА';
+                gridStatus.className = 'ml-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800';
+            }
+
+            updateShopButtons();
+        }
+
+        setInterval(() => {
+            const mult = currentMultiplier;
+            const delta = (econ.netCPS * mult) / 10;
+            
+            if (delta !== 0) {
+                game.money += delta;
+                if (game.money < -15000) game.money = -15000;
+                
+                if (delta > 0) {
+                    game.sessionMoney += delta;
+                    game.lifetimeMoney += delta;
+                    checkAchievements();
+                }
+            }
+
+            updateUI();
+        }, 100);
+
+        let clock = new THREE.Clock();
+        let sparkFrameCounter = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const t = clock.getElapsedTime();
+
+            currentCameraY += (targetCameraY - currentCameraY) * 0.05;
+            currentCameraZ += (targetCameraZ - currentCameraZ) * 0.05;
+            currentLookAtY += (targetLookAtY - currentLookAtY) * 0.05;
+
+            camera.position.set(towerOffsetX, currentCameraY, currentCameraZ);
+            camera.lookAt(towerOffsetX, currentLookAtY, 0);
+
+            baseRoot.position.y = Math.sin(t * 1.4) * 0.08;
+            baseRoot.rotation.y = t * 0.08;
+            mechRing.rotation.z = -t * 0.4;
+
+            reactorCore.rotation.y += 0.03;
+            reactorCore.rotation.x = Math.sin(t * 2) * 0.2;
+            gyroRing1.rotation.x += 0.04;
+            gyroRing1.rotation.y += 0.02;
+            gyroRing2.rotation.z += 0.03;
+            gyroRing2.rotation.y -= 0.025;
+
+            dustParticles.rotation.y = t * 0.02;
+
+            if (shockwaveMesh.material.opacity > 0.01) {
+                shockwaveMesh.scale.addScalar(0.08);
+                shockwaveMesh.material.opacity -= 0.025;
+            }
+
+            if (tapMat.opacity > 0.01) {
+                tapMat.opacity -= 0.035;
+                for (let i = 0; i < tapParticleCount; i++) {
+                    tapPositions[i * 3] += tapVelocities[i].x;
+                    tapPositions[i * 3 + 1] += tapVelocities[i].y;
+                    tapPositions[i * 3 + 2] += tapVelocities[i].z;
+                }
+                tapGeo.attributes.position.needsUpdate = true;
+            }
+
+            if (currentMultiplier === 5) {
+                sparkFrameCounter++;
+                if (sparkFrameCounter % 2 === 0) {
+                    const topY = reactorGroup.position.y || 2;
+                    for (let i = 0; i < sparkCount * 3; i += 6) {
+                        sparkPos[i] = towerOffsetX + (Math.random() - 0.5) * 0.6;
+                        sparkPos[i+1] = topY + (Math.random() - 0.5) * 0.6;
+                        sparkPos[i+2] = (Math.random() - 0.5) * 0.6;
+
+                        sparkPos[i+3] = towerOffsetX + (Math.random() - 0.5) * 1.4;
+                        sparkPos[i+4] = topY + (Math.random() - 0.5) * 1.4;
+                        sparkPos[i+5] = (Math.random() - 0.5) * 1.4;
+                    }
+                    sparkGeo.attributes.position.needsUpdate = true;
+                }
+            }
+
+            const towerH = Math.max(1.3, reactorGroup.position.y);
+            const droneSpeedMultiplier = 1 + (currentMultiplier * 0.25);
+            const droneTargetY = reactorGroup.position.y;
+
+            droneMeshes.forEach((d, idx) => {
+                d.data.angle += d.data.speed * droneSpeedMultiplier;
+                const r = d.data.radius;
+                const x = Math.cos(d.data.angle) * r;
+                const z = Math.sin(d.data.angle) * r;
+                const y = (d.data.heightRatio * towerH) + Math.sin(t * 2.5 + d.data.angle) * 0.15;
+
+                d.group.position.set(x, y, z);
+                d.group.rotation.y = -d.data.angle + Math.PI / 2;
+                d.group.rotation.z = 0.18;
+
+                const laserBaseIdx = idx * 6;
+                laserPositions[laserBaseIdx] = towerOffsetX + x;
+                laserPositions[laserBaseIdx + 1] = y;
+                laserPositions[laserBaseIdx + 2] = z;
+
+                laserPositions[laserBaseIdx + 3] = towerOffsetX;
+                laserPositions[laserBaseIdx + 4] = droneTargetY;
+                laserPositions[laserBaseIdx + 5] = 0;
+            });
+            laserGeo.attributes.position.needsUpdate = true;
+
+            starMat.opacity = 0.75 + Math.sin(t * 3.5) * 0.2;
+            
+            thruster1.scale.set(1 + Math.sin(t * 3) * 0.05, 1 + Math.cos(t * 3) * 0.05, 1 + Math.sin(t * 3) * 0.05);
+            thruster2.scale.set(1 + Math.cos(t * 4) * 0.08, 1 + Math.sin(t * 4) * 0.08, 1 + Math.cos(t * 4) * 0.08);
+
+            renderer.render(scene, camera);
+        }
+
+        // Запуск игры
+        loadGame();
+        calculateEconomy();
+        setBuyMultiplier(buyMultiplier);
+        rebuild3DBuilding();
+        applyActiveSkin();
+        updateMultiplierClass();
+        updateMultiplierVisuals();
+        updateUI();
+        updateGemsUI();
+        updateDailyBonusButtonStatus();
+        animate();
+
+        window.addEventListener('resize', () => {
+            towerOffsetX = window.innerWidth > 640 ? 0.9 : 0.0;
+            baseRoot.position.x = towerOffsetX;
+            
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            const total = Object.values(game.counts).reduce((a, b) => a + b, 0);
+            const floors = Math.min(1 + Math.floor(total / 3), 16);
+            targetCameraZ = Math.max(5.8 + (floors * 0.16), 6.2 / camera.aspect);
+        });
+    </script>
+</body>
+  </html>
