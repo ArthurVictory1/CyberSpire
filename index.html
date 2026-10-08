@@ -54,7 +54,7 @@
         }
     </style>
 </head>
-<body id="app-body" class="h-screen w-screen relative overflow-hidden">
+<body id"app-body" class="h-screen w-screen relative overflow-hidden">
 
     <div id="canvas-container"></div>
 
@@ -112,26 +112,53 @@
             </div>
 
             <p class="text-[11px] text-slate-100 font-bold leading-relaxed">
-                Вы помогаете развивать все проекты и вдохновляете на новые проекты!
-            </p>
-
-            <p class="text-[10px] text-slate-400 leading-normal">
-                CyberSpire 3D создается с вниманием к каждой детали. Ваше участие позволяет развивать игру, выпускать регулярные обновления, новые 3D-модули и расширенные механики.
+                Вы помогаете развивать все проекты и вдохновляете на новые обновления!
             </p>
 
             <div class="flex flex-col gap-2 pt-1">
                 <a id="author-boosty-btn" href="#" target="_blank" class="w-full py-2.5 px-3 bg-[#f15f2c] hover:bg-[#e05322] active:scale-95 text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition-all">
-                    <span>🟠</span> <span>Поддержать на Boosty</span>
+                    <span>🦊</span> <span>Подписка на Boosty</span>
                 </a>
 
                 <a id="author-da-btn" href="#" target="_blank" class="w-full py-2.5 px-3 bg-[#ff7700] hover:bg-[#eb6e00] active:scale-95 text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition-all">
-                    <span>🔔</span> <span>DonationAlerts</span>
+                    <span>📢</span> <span>DonationAlerts</span>
                 </a>
+            </div>
+
+            <!-- БЛОК ПРОМОКОДА -->
+            <div class="pt-2 border-t border-slate-800 flex flex-col gap-1.5">
+                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Секретный промокод:</span>
+                <div class="flex gap-1.5">
+                    <input id="author-promo-input" type="text" placeholder="ВВЕДИТЕ КОД..." class="flex-1 bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-2.5 py-1.5 text-xs text-white uppercase outline-none font-mono">
+                    <button onclick="applySecretPromo()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition-all">Ввод</button>
+                </div>
+                <div id="author-promo-msg" class="text-[10px] font-mono min-h-[14px]"></div>
             </div>
 
             <div class="bg-slate-950/80 rounded-xl p-2 border border-slate-800 text-[10px] text-amber-400/90 text-center font-mono">
                 Спасибо за вашу поддержку и вдохновение! ✨
             </div>
+        </div>
+    </div>
+
+        <!-- Модальное окно Статистики Цитадели -->
+    <div id="stats-modal" onclick="if(event.target===this)closeStatsModal()" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-sky-500/80 rounded-3xl p-5 max-w-sm w-full flex flex-col gap-3 shadow-[0_0_50px_rgba(14,165,233,0.35)] animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">📊</span>
+                    <span class="text-xs font-black uppercase text-sky-300 tracking-wider">Бортовой журнал</span>
+                </div>
+                <button onclick="closeStatsModal()" class="text-slate-400 hover:text-white text-sm px-1.5 py-0.5 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+            </div>
+
+            <div id="stats-list-container" class="flex flex-col gap-1.5 max-h-[60vh] overflow-y-auto pr-1 text-xs">
+                <!-- Заполняется автоматически из JS -->
+            </div>
+
+            <button onclick="closeStatsModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs uppercase tracking-wider transition-all">
+                Закрыть
+            </button>
         </div>
     </div>
 
@@ -146,7 +173,6 @@
             <div class="flex justify-between items-center mb-2">
                 <span class="text-[11px] font-black uppercase tracking-wider text-slate-300">База</span>
                 <div class="flex gap-1 items-center">
-                    <!-- ОТКРЫТАЯ КНОПКА +10M ВСЕХ ВАЛЮТ -->
                     <button onclick="addMegaCheat()" class="text-[10px] text-amber-300 hover:text-amber-100 font-black px-2 py-0.5 rounded-lg bg-amber-950/80 border border-amber-600/80 active:scale-95 transition-all shadow" title="Начислить 10,000,000 всех валют">
                         🚀 +10M ВСЁ
                     </button>
@@ -214,6 +240,10 @@
             <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="uppercase tracking-wider text-slate-400">CyberSpire v7.1</span>
                 
+                <button onclick="openStatsModal()" class="px-2 py-0.5 rounded bg-slate-800 text-sky-300 border border-slate-700 hover:text-white font-bold flex itmes-center gap-1 shadow transition-all active:scale-95 cursor-pointer" title="Архив показателей">
+                    <span>📊</span><span>Статистика</span>
+                </button>
+
                 <button onclick="openAuthorSupportModal()" class="px-2 py-0.5 rounded bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-slate-950 font-black flex items-center gap-1 shadow transition-all active:scale-95 cursor-pointer" title="Поддержать автора проекта">
                     <span>❤️</span> <span>Автор</span>
                 </button>
@@ -302,7 +332,7 @@
         </div>
 
         <div id="overheat-alert" class="hidden py-1 px-2 rounded-lg bg-rose-950/95 border border-rose-500 text-rose-300 text-center text-[10px] font-black animate-pulse">
-            ⚠️️ ПЕРЕГРЕВ СИСТЕМЫ! ОХЛАЖДЕНИЕ...
+            ⚠ ПЕРЕГРЕВ СИСТЕМЫ! ОХЛАЖДЕНИЕ...
         </div>
     </header>
 
@@ -335,8 +365,8 @@
     <script>
         const SAVE_KEY = 'cyberspire_save_v7';
 
-        const AUTHOR_BOOSTY_URL = "https://boosty.to/"; 
-        const AUTHOR_DONATIONALERTS_URL = "https://www.donationalerts.com/";
+        const AUTHOR_BOOSTY_URL = "https://boosty.to/shapochka_iz_folgi1337/donate"; 
+        const AUTHOR_DONATIONALERTS_URL = "https://www.donationalerts.com/r/shapochkaizfolgi1337";
 
         function openAuthorSupportModal() {
             document.getElementById('author-boosty-btn').href = AUTHOR_BOOSTY_URL;
@@ -346,6 +376,41 @@
 
         function closeAuthorSupportModal() {
             document.getElementById('author-support-modal').classList.add('hidden');
+            const msg = document.getElementById('author-promo-msg');
+            if (msg) msg.innerText = '';
+        }
+
+        let usedPromoList = JSON.parse(localStorage.getItem('cyberspire_promos') || '[]');
+
+        function applySecretPromo() {
+            const input = document.getElementById('author-promo-input');
+            const msg = document.getElementById('author-promo-msg');
+            if (!input || !msg) return;
+
+            const code = input.value.trim().toUpperCase();
+            if (!code) return;
+
+            if (usedPromoList.includes(code)) {
+                msg.className = "text-[10px] font-mono text-rose-400";
+                msg.innerText = "Код уже был активирован ранее!";
+                return;
+            }
+
+            if (code === 'FOLGA1337') {
+                usedPromoList.push(code);
+                localStorage.setItem('cyberspire_promos', JSON.stringify(usedPromoList));
+
+                addGems(150, "Промокод FOLGA1337");
+                AudioSys.playSuccess();
+                Haptics.prestige();
+
+                msg.className = "text-[10px] font-mono text-emerald-400";
+                msg.innerText = "Успешно! Начислено +150 💎";
+                input.value = '';
+            } else {
+                msg.className = "text-[10px] font-mono text-rose-400";
+                msg.innerText = "Неверный код активации";
+            }
         }
 
         window.addEventListener('keydown', (e) => {
@@ -629,7 +694,6 @@
             { day: 7, gems: 100, cores: 1 }
         ];
 
-        // 20 РАЗВЁРНУТЫХ ДОСТИЖЕНИЙ
         const ACHIEVEMENTS_DEF = [
             { id: 'first_click', name: "Первый импульс", desc: "Сделать 1 ручной клик по цитадели", target: 1, type: 'clicks', gems: 5 },
             { id: 'click_100', name: "Клик-комбайн", desc: "Сделать 100 ручных кликов", target: 100, type: 'clicks', gems: 10 },
@@ -688,6 +752,7 @@
             counts: { i1: 0, i2: 0, i3: 0, i4: 0, p1: 0, p2: 0, p3: 0 },
             
             gems: 0,
+            quests: [],
             vipUpgrades: { autoclickLevel: 0, permX2: false, noOverheat: false },
 
             unlockedSkins: ['default'],
@@ -710,6 +775,135 @@
             prestigeCores: 0,
             prestigeUpgrades: { q_click: 0, q_cooling: 0, q_income: 0, q_offline: 0 }
         };
+
+                // ==========================================
+        // МОДУЛЬ: ДИНАМИЧЕСКИЕ КВЕСТЫ (КОНТРАКТЫ)
+        // ==========================================
+        let goalsSubTab = 'quests'; // 'quests' | 'achievements'
+
+        const QUEST_POOL = [
+            { type: 'clicks', name: 'Ручная синхронизация', desc: 'Сделать ручные тапы', target: 50, rewardGems: 8, rewardMoneyMult: 120 },
+            { type: 'clicks', name: 'Интенсивный импульс', desc: 'Сделать ручные тапы', target: 120, rewardGems: 15, rewardMoneyMult: 250 },
+            { type: 'buy', name: 'Расширение мощностей', desc: 'Купить любые постройки', target: 5, rewardGems: 10, rewardMoneyMult: 180 },
+            { type: 'buy', name: 'Сетевой апгрейд', desc: 'Купить любые постройки', target: 12, rewardGems: 20, rewardMoneyMult: 350 },
+            { type: 'combo', name: 'Разгон контура', desc: 'Достигнуть турбо-множителя x3', target: 3, rewardGems: 12, rewardMoneyMult: 150 },
+            { type: 'combo', name: 'Пиковый Overdrive', desc: 'Достигнуть овердрайва x5', target: 5, rewardGems: 25, rewardMoneyMult: 400 },
+            { type: 'incident', name: 'Отражение тревоги', desc: 'Успешно ликвидировать аварию', target: 1, rewardGems: 18, rewardMoneyMult: 300 }
+        ];
+
+        function initQuests() {
+            if (!game.quests || game.quests.length < 3) {
+                game.quests = [];
+                for (let i = 0; i < 3; i++) {
+                    generateNewQuest(i);
+                }
+            }
+        }
+
+        function generateNewQuest(slotIndex) {
+            const template = QUEST_POOL[Math.floor(Math.random() * QUEST_POOL.length)];
+            game.quests[slotIndex] = {
+                id: 'q_' + Date.now() + '_' + slotIndex,
+                type: template.type,
+                name: template.name,
+                desc: `${template.desc}: 0 / ${template.target}`,
+                target: template.target,
+                current: 0,
+                rewardGems: template.rewardGems,
+                rewardMoneyMult: template.rewardMoneyMult,
+                completed: false
+            };
+        }
+
+        function trackQuestProgress(type, amount) {
+            if (!game.quests) return;
+            let changed = false;
+
+            game.quests.forEach((q, idx) => {
+                if (q.completed) return;
+                if (q.type === type) {
+                    if (type === 'combo') {
+                        if (amount >= q.target) {
+                            q.current = q.target;
+                            q.completed = true;
+                            changed = true;
+                        }
+                    } else {
+                        q.current = Math.min(q.target, q.current + amount);
+                        if (q.current >= q.target) {
+                            q.completed = true;
+                        }
+                        changed = true;
+                    }
+                }
+            });
+
+            if (changed && activeTab === 'achievements') {
+                renderShopStructure();
+            }
+        }
+
+        function claimQuestReward(slotIndex) {
+            const q = game.quests[slotIndex];
+            if (!q || !q.completed) return;
+
+            addGems(q.rewardGems, `Контракт: ${q.name}`);
+            calculateEconomy();
+            const moneyBonus = Math.max(50, Math.floor(Math.max(10, econ.grossCPS) * q.rewardMoneyMult));
+            game.money += moneyBonus;
+            game.sessionMoney += moneyBonus;
+            game.lifetimeMoney += moneyBonus;
+
+            AudioSys.playSuccess();
+            Haptics.multiplier();
+            showToast("Контракт закрыт!", `+${q.rewardGems} 💎 и +${formatNumber(moneyBonus)} $`, "gold");
+
+            generateNewQuest(slotIndex);
+            saveGame();
+            renderShopStructure();
+        }
+
+        // ==========================================
+        // МОДУЛЬ: ОКНО СТАТИСТИКИ
+        // ==========================================
+        function openStatsModal() {
+            calculateEconomy();
+            const list = document.getElementById('stats-list-container');
+            if (!list) return;
+
+            const totalFloors = Math.min(1 + Math.floor(Object.values(game.counts).reduce((a, b) => a + b, 0) / 3), 16);
+            const totalBuildings = Object.values(game.counts).reduce((a, b) => a + b, 0);
+
+            const statsData = [
+                { label: 'Всего ручных кликов', val: (game.stats.totalClicks || 0).toLocaleString() + ' раз' },
+                { label: 'Капитал за всю историю', val: formatNumber(game.lifetimeMoney || 0) + ' $' },
+                { label: 'Капитал текущего цикла', val: formatNumber(game.sessionMoney || 0) + ' $' },
+                { label: 'Текущий чистый доход', val: formatNumber(econ.netCPS * currentMultiplier) + ' $/с' },
+                { label: 'Высота Цитадели', val: `${totalFloors} этажей (${totalBuildings} модулей)` },
+                { label: 'Квантовых ядер', val: `${game.prestigeCores || 0} ⚛️` },
+                { label: 'Квантовых слияний (Престиж)', val: `${game.stats.totalPrestigeCount || 0} раз` },
+                { label: 'Ликвидировано аварий (QTE)', val: `${game.stats.incidentsResolved || 0} шт.` },
+                { label: 'Пиковая мощность энергосети', val: `${formatNumber(game.stats.peakPower || 0)} кВт` },
+                { label: 'Синтезировано кристаллов', val: `${game.stats.gemsSynthesized || 0} 💎` },
+                { label: 'Демонтировано серверов [−]', val: `${game.stats.buildingsSold || 0} шт.` },
+                { label: 'Уровень офлайн-автопилота', val: `Ур. ${game.offlineLevel || 0} / 10` },
+                { label: 'Открыто 3D-скинов', val: `${game.unlockedSkins.length} из ${SKINS.length}` }
+            ];
+
+            list.innerHTML = statsData.map(s => `
+                <div class="flex justify-between items-center p-2 rounded-xl bg-slate-950/70 border border-slate-800">
+                    <span class="text-slate-400">${s.label}</span>
+                    <span class="font-mono font-bold text-sky-300">${s.val}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('stats-modal').classList.remove('hidden');
+        }
+
+        function closeStatsModal() {
+            document.getElementById('stats-modal').classList.add('hidden');
+        }
+
 
         let activeTab = 'income';
         let isPrestiging = false;
@@ -743,7 +937,6 @@
             if (sGems) sGems.innerText = `${game.gems} 💎`;
         }
 
-        // ОТКРЫТАЯ ЧИТ-КНОПКА (+10M ВСЕХ ВАЛЮТ)
         function addMegaCheat() {
             game.money += 10000000;
             game.sessionMoney += 10000000;
@@ -768,9 +961,6 @@
             showToast("Тестовый баланс", "+50 000 $ зачислено!", "success");
         }
 
-        // ==========================================
-        // 5. РАСЧЁТ СТОИМОСТИ ПАКЕТНОЙ ПОКУПКИ
-        // ==========================================
         function getBatchCostInfo(b, currentCount, targetMult) {
             if (targetMult === 'max') {
                 let totalCost = 0;
@@ -801,13 +991,10 @@
             }
         }
 
-        // ==========================================
-        // 6. ЕЖЕДНЕВНЫЕ НАГРАДЫ
-        // ==========================================
         function isDailyAvailable() {
             const now = Date.now();
             const elapsed = now - (game.lastDailyClaim || 0);
-            return elapsed >= (20 * 3600 * 1000); // 20 часов
+            return elapsed >= (20 * 3600 * 1000);
         }
 
         function updateDailyBonusButtonStatus() {
@@ -832,7 +1019,7 @@
             const currentDay = game.dailyStreak || 1;
 
             DAILY_REWARDS.forEach(r => {
-                const isClaimed = r.day < currentDay || (r.day === currentDay && !available);
+                const isClaimed = r.day < currentDay;
                 const isCurrent = r.day === currentDay && available;
 
                 const card = document.createElement('div');
@@ -894,9 +1081,6 @@
             showToast("Ежедневный бонус получен!", `+${reward.gems} 💎 ${reward.cores ? 'и +1 Квантовое ядро ⚛️' : ''}`, "purple");
         }
 
-        // ==========================================
-        // 7. СИСТЕМА 3D-СКИНОФ
-        // ==========================================
         function applyActiveSkin() {
             const skin = SKINS.find(s => s.id === (game.activeSkin || 'default')) || SKINS[0];
             if (pylonMat) pylonMat.color.setHex(skin.pylon);
@@ -938,9 +1122,6 @@
             }
         }
 
-        // ==========================================
-        // 8. ПРОДАЖА ЗДАНИЙ
-        // ==========================================
         function sellBuilding(id) {
             const count = game.counts[id] || 0;
             if (count <= 0) return;
@@ -967,9 +1148,6 @@
             showToast("Здание продано", `${b.name} демонтирован. Возврат: +${formatNumber(refund)} $`, "info");
         }
 
-        // ==========================================
-        // 9. СИНТЕЗ КРИСТАЛЛОВ ЗА ЭНЕРГОСЕТЬ (500 ⚡ = 1 💎)
-        // ==========================================
         function exchangeGridPowerForGems(gemAmount) {
             const requiredPower = gemAmount * 500;
             const powerAfter = econ.totalPowerGen - requiredPower;
@@ -1044,9 +1222,6 @@
             return `${s} сек.`;
         }
 
-        // ==========================================
-        // 10. СОХРАНЕНИЯ И ОФЛАЙН
-        // ==========================================
         function saveGame() {
             try {
                 const saveState = {
@@ -1066,6 +1241,7 @@
                     achievementsState: game.achievementsState,
                     prestigeCores: game.prestigeCores,
                     prestigeUpgrades: game.prestigeUpgrades,
+                    quest: game.quests,
                     timestamp: Date.now()
                 };
                 localStorage.setItem(SAVE_KEY, JSON.stringify(saveState));
@@ -1120,6 +1296,7 @@
                     }
                 }
                 if (data.prestigeUpgrades) game.prestigeUpgrades = { ...game.prestigeUpgrades, ...data.prestigeUpgrades };
+                if (Array.isArray(data.quests)) game.quests = data.quests;
 
                 if (data.timestamp) {
                     const elapsed = Math.floor((Date.now() - data.timestamp) / 1000);
@@ -1152,9 +1329,6 @@
             if (document.hidden) saveGame();
         });
 
-        // ==========================================
-        // 11. ПРЕСТИЖ
-        // ==========================================
         const PRESTIGE_BASE_PRICE = 30000;
 
         function getPendingCores() {
@@ -1278,9 +1452,6 @@
             showToast("Сброс", "База перезапущена с нуля!", "info");
         }
 
-        // ==========================================
-        // 12. QTE АВАРИИ
-        // ==========================================
         let activeIncident = null;
         let incidentTimerInterval = null;
         let incidentTimeLeft = 0;
@@ -1372,6 +1543,7 @@
             document.getElementById('incident-box').classList.add('hidden');
             cleanupQTE();
             activeIncident = null;
+            trackQuestProgress('incident', 1);
 
             AudioSys.stopAlarm();
             AudioSys.playSuccess();
@@ -1415,9 +1587,6 @@
             }
         }, 36000);
 
-        // ==========================================
-        // 13. ДВИЖОК ТЕМ И БИОМОВ
-        // ==========================================
         const THEMES = [
             { id: 'cyber', name: 'НЕОН', fog: 0x020617, dirLight: 0x38bdf8, stars: 0xcfdafe, hemi: 0x93c5fd, dust: 0x38bdf8 },
             { id: 'mars', name: 'МАРС', fog: 0x180905, dirLight: 0xf97316, stars: 0xfed7aa, hemi: 0xfdba74, dust: 0xf97316 },
@@ -1440,9 +1609,6 @@
             }
         };
 
-        // ==========================================
-        // 14. ТЕКСТУРЫ И 3D THREE.JS
-        // ==========================================
         function createBumpTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 256;
@@ -1927,9 +2093,6 @@
             applyActiveSkin();
         }
 
-        // ==========================================
-        // 15. КОМБО-ШКАЛА И АНТИЧИТ
-        // ==========================================
         let heatPoints = 0;
         let currentMultiplier = 1;
         let lastMultiplier = 1;
@@ -2029,6 +2192,7 @@
             if (newMult !== currentMultiplier) {
                 const isLevelUp = newMult > currentMultiplier;
                 currentMultiplier = newMult;
+                trackQuestProgress('combo',currentMultiplier);
 
                 if (isLevelUp) {
                     Haptics.multiplier();
@@ -2140,9 +2304,6 @@
             }
         }, 40);
 
-        // ==========================================
-        // 16. КЛИКИ ПО ЭКРАНУ
-        // ==========================================
         function executeClick(clientX, clientY, isAuto = false) {
             if (isPrestiging) return;
 
@@ -2153,6 +2314,7 @@
                 Haptics.tap();
                 trigger3DTapBurst();
                 game.stats.totalClicks = (game.stats.totalClicks || 0) + 1;
+                trackQuestProgress('clicks', 1);
             }
             AudioSys.play('tap', 0.35);
             addHeat();
@@ -2214,9 +2376,6 @@
             }
         }, 30);
 
-        // ==========================================
-        // 17. ЭКОНОМИКА И ИВЕНТЫ
-        // ==========================================
         let econ = {
             grossCPS: 0,
             totalMaint: 0,
@@ -2260,7 +2419,6 @@
             econ.freePower = Math.max(0, effectivePowerGen - powerUsed);
             econ.isBlackout = powerUsed > effectivePowerGen;
 
-            // Запоминание пиковой мощности (не сбрасывает ачивку)
             game.stats.peakPower = Math.max(game.stats.peakPower || 0, effectivePowerGen);
 
             const effectiveGross = econ.isBlackout ? gross * 0.2 : gross;
@@ -2313,9 +2471,6 @@
             }
         }, 65000);
 
-        // ========================================================
-        // ПРОВЕРКА ДОСТИЖЕНИЙ С ТРОТТЛИНГОМ (60+ FPS)
-        // ========================================================
         function getAchievementProgress(ach) {
             let current = 0;
             if (ach.type === 'clicks') current = game.stats.totalClicks || 0;
@@ -2336,13 +2491,13 @@
 
             const isDone = current >= ach.target;
             const pct = Math.min(100, Math.floor((current / ach.target) * 100));
-            return { current, target: ach.target, isDone, pct };
+            return { current: Math.min(current, ach.target), target: ach.target, isDone, pct };
         }
 
         let lastAchCheckTime = 0;
         function checkAchievements() {
             const now = performance.now();
-            if (now - lastAchCheckTime < 250) return; // Проверка не чаще 4 раз в секунду
+            if (now - lastAchCheckTime < 250) return;
             lastAchCheckTime = now;
 
             ACHIEVEMENTS_DEF.forEach(ach => {
@@ -2376,7 +2531,6 @@
             }
         }
 
-        // КНОПКА «ЗАБРАТЬ ВСЁ» ВО ВКЛАДКЕ «ЦЕЛИ»
         function claimAllAchievements() {
             let totalGems = 0;
             let count = 0;
@@ -2405,9 +2559,6 @@
             }
         }
 
-        // ==========================================
-        // 18. МАГАЗИН И ВКЛАДКИ
-        // ==========================================
         const buttonAffordanceCache = {};
 
         function switchTab(tab) {
@@ -2459,6 +2610,7 @@
                 AudioSys.play('buy', 0.5);
                 game.money -= batchInfo.cost;
                 game.counts[id] = currentCount + batchInfo.count;
+                trackQuestProgress('buy',batchInfo.count);
                 calculateEconomy();
                 rebuild3DBuilding();
                 checkAchievements();
@@ -2553,12 +2705,64 @@
             for (let k in buttonAffordanceCache) delete buttonAffordanceCache[k];
             listContainer.innerHTML = '';
 
-            // ВКЛАДКА 🏆 ДОСТИЖЕНИЙ С КНОПКОЙ «ЗАБРАТЬ ВСЁ»
+                        // ВКЛАДКА 🏆 ЦЕЛИ (КОНТРАКТЫ И ДОСТИЖЕНИЯ)
             if (activeTab === 'achievements') {
+                initQuests();
+
+                // Шапка с переключателем режимов
+                const navCard = document.createElement('div');
+                navCard.className = 'grid grid-cols-2 gap-1 p-1 bg-slate-950 rounded-xl border border-slate-800 text-[10px] font-bold mb-1.5';
+                navCard.innerHTML = `
+                    <button onclick="goalsSubTab='quests'; renderShopStructure();" class="py-1.5 rounded-lg transition-all ${
+                        goalsSubTab === 'quests' ? 'bg-amber-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'
+                    }">📜 Контракты (3)</button>
+                    <button onclick="goalsSubTab='achievements'; renderShopStructure();" class="py-1.5 rounded-lg transition-all ${
+                        goalsSubTab === 'achievements' ? 'bg-amber-500 text-slate-950 font-black shadow' : 'text-slate-400 hover:text-white'
+                    }">🏆 Достижения</button>
+                `;
+                listContainer.appendChild(navCard);
+
+                // РЕЖИМ 1: ДИНАМИЧЕСКИЕ КОНТРАКТЫ (КВЕСТЫ)
+                if (goalsSubTab === 'quests') {
+                    game.quests.forEach((q, idx) => {
+                        const pct = Math.min(100, Math.floor((q.current / q.target) * 100));
+                        const row = document.createElement('div');
+                        row.className = `p-2.5 rounded-xl border flex flex-col gap-1.5 text-xs ${
+                            q.completed 
+                                ? 'bg-gradient-to-r from-amber-950/70 to-slate-900 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)]' 
+                                : 'bg-slate-900/80 border-slate-800'
+                        }`;
+                        row.innerHTML = `
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-black text-slate-100">${q.name}</p>
+                                    <p class="text-[9px] text-slate-400">${q.desc}</p>
+                                </div>
+                                <span class="font-mono text-cyan-300 font-black text-[11px]">+${q.rewardGems} 💎</span>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex-1 bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                                    <div class="bg-gradient-to-r from-amber-500 to-yellow-300 h-full transition-all" style="width: ${pct}%;"></div>
+                                </div>
+                                <span class="text-[9px] font-mono text-slate-300">${q.current} / ${q.target}</span>
+                                <button onclick="claimQuestReward(${idx})" class="px-2.5 py-1 rounded-lg text-[9px] font-black transition-all ${
+                                    q.completed 
+                                        ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 active:scale-95 shadow cursor-pointer animate-pulse' 
+                                        : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-60'
+                                }">
+                                    ${q.completed ? 'ЗАБРАТЬ' : 'В РАБОТЕ'}
+                                </button>
+                            </div>
+                        `;
+                        listContainer.appendChild(row);
+                    });
+                    return;
+                }
+
+                // РЕЖИМ 2: ГЛОБАЛЬНЫЕ ДОСТИЖЕНИЯ
                 const totalAch = ACHIEVEMENTS_DEF.length;
                 const completedCount = ACHIEVEMENTS_DEF.filter(a => (game.achievementsState[a.id] || {}).claimed).length;
 
-                // Подсчёт наград, доступных для забора прямо сейчас
                 const claimableAchievements = ACHIEVEMENTS_DEF.filter(a => {
                     const prog = getAchievementProgress(a);
                     const state = game.achievementsState[a.id] || { claimed: false };
@@ -2570,14 +2774,13 @@
                 headerCard.className = 'bg-gradient-to-r from-amber-950/80 to-slate-900 border border-amber-500/60 p-2.5 rounded-xl flex flex-col gap-1.5 mb-1 text-xs shadow-md';
                 headerCard.innerHTML = `
                     <div class="flex justify-between items-center font-bold text-amber-300">
-                        <span>🏆 ЦЕЛИ СИНДИКАТА</span>
+                        <span>🏆 ДОСТИЖЕНИЯ</span>
                         <span class="font-mono">${completedCount} / ${totalAch}</span>
                     </div>
                     <div class="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
                         <div class="bg-gradient-to-r from-amber-500 to-yellow-300 h-full transition-all duration-300" style="width: ${Math.floor((completedCount / totalAch) * 100)}%;"></div>
                     </div>
                     
-                    <!-- КНОПКА ЗАБРАТЬ ВСЁ -->
                     <button onclick="claimAllAchievements()" class="w-full mt-1 py-1.5 px-2 rounded-lg font-black text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${
                         claimableAchievements.length > 0 
                             ? 'bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 shadow-md active:scale-95 animate-pulse cursor-pointer' 
@@ -2628,7 +2831,6 @@
                 return;
             }
 
-            // ВКЛАДКА VIP
             if (activeTab === 'vip') {
                 const freePower = Math.max(0, econ.totalPowerGen - econ.totalPowerUsed);
 
@@ -2739,7 +2941,6 @@
                 return;
             }
 
-            // Вкладка Дохода
             if (activeTab === 'income') {
                 const offCost = getOfflineUpgradeCost();
                 const effPercent = Math.round((0.20 + (game.offlineLevel * 0.05)) * (1 + ((game.prestigeUpgrades.q_offline || 0) * 0.25)) * 100);
@@ -2760,13 +2961,12 @@
                     <button onclick="buyOfflineUpgrade()" class="w-full py-1.5 rounded-lg text-xs font-bold transition-all ${
                         isMax ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : (game.money >= offCost ? 'bg-sky-500 hover:bg-sky-400 text-slate-950 shadow active:scale-95' : 'bg-slate-700 text-slate-400 opacity-60 cursor-not-allowed')
                     }">
-                        ${isMax ? 'МАКС. УРОВЕНЬ' : `Улучшить (+5%) • ${formatNumber(offCost)} $`}
+                        ${isMax ? 'МАКС. УРОВЕНЬ' : `Улучшить (+5%) • ${formatNumber(offCost)}$`}
                     </button>
                 `;
                 listContainer.appendChild(offCard);
             }
 
-            // Вкладка Престижа
             if (activeTab === 'prestige') {
                 const pendingCores = getPendingCores();
                 const nextCost = getNextCorePrice(pendingCores);
@@ -2807,7 +3007,7 @@
                     <button id="prestige-fusion-btn" onclick="triggerPrestige()" class="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-black rounded-lg text-xs tracking-wide shadow-md transition-all ${pendingCores > 0 ? '' : 'opacity-50 cursor-not-allowed'}">
                         ${pendingCores > 0 
                             ? `⚛️ Совершить Слияние (+${pendingCores} ядер)` 
-                            : `Нужно ещё: ${formatNumber(PRESTIGE_BASE_PRICE - game.sessionMoney)} $`}
+                            : `Нужно ещё: ${formatNumber(PRESTIGE_BASE_PRICE - game.sessionMoney)}$`}
                     </button>
                 `;
                 listContainer.appendChild(prestigeHeader);
@@ -2832,7 +3032,6 @@
                 return;
             }
 
-            // Доход и Энергия
             const items = activeTab === 'income' ? BUILDINGS.income : BUILDINGS.power;
             items.forEach(b => {
                 const row = document.createElement('div');
@@ -2965,7 +3164,6 @@
                 return;
             }
 
-            // Доход и Энергия
             const items = activeTab === 'income' ? BUILDINGS.income : BUILDINGS.power;
             items.forEach(b => {
                 const row = listContainer.querySelector(`[data-id="${b.id}"]`);
@@ -3026,9 +3224,6 @@
             }
         }
 
-        // ==========================================
-        // 19. ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ
-        // ==========================================
         function updateUI() {
             calculateEconomy();
             updateMoneyDisplay();
@@ -3179,8 +3374,8 @@
             renderer.render(scene, camera);
         }
 
-        // Запуск игры
         loadGame();
+        initQuests();
         calculateEconomy();
         setBuyMultiplier(buyMultiplier);
         rebuild3DBuilding();
@@ -3204,157 +3399,6 @@
             const floors = Math.min(1 + Math.floor(total / 3), 16);
             targetCameraZ = Math.max(5.8 + (floors * 0.16), 6.2 / camera.aspect);
         });
-        // --- ЛОГИКА АВТОРА, ПРОМОКОДОВ И ОФЛАЙНА ---
-let usedPromoCodes = JSON.parse(localStorage.getItem('CYBER_PROMOS') || '[]');
-let pendingOfflineAmount = 0;
-
-function openAuthorModal() {
-  const m = document.getElementById('modal-author');
-  if (m) m.style.display = 'flex';
-}
-
-function closeAuthorModal() {
-  const m = document.getElementById('modal-author');
-  if (m) m.style.display = 'none';
-  const st = document.getElementById('promo-status');
-  if (st) st.innerText = '';
-}
-
-function redeemPromo() {
-  const input = document.getElementById('promo-input');
-  const status = document.getElementById('promo-status');
-  if (!input || !status) return;
-  const code = input.value.trim().toUpperCase();
-
-  if (!code) return;
-
-  if (usedPromoCodes.includes(code)) {
-    status.style.color = '#ff4d4d';
-    status.innerText = 'Промокод уже был активирован!';
-    return;
-  }
-
-  if (code === 'FOLGA1337') {
-    // Начисляем 150 кристаллов
-    if (typeof gems !== 'undefined') {
-      gems += 150;
-    } else if (window.gameState && window.gameState.gems !== undefined) {
-      window.gameState.gems += 150;
-    }
-    
-    usedPromoCodes.push(code);
-    localStorage.setItem('CYBER_PROMOS', JSON.stringify(usedPromoCodes));
-    
-    status.style.color = '#00f3ff';
-    status.innerText = 'Успешно! Получено +150 кристаллов 💎';
-    input.value = '';
-
-    if (typeof updateUI === 'function') updateUI();
-    if (typeof saveGame === 'function') saveGame();
-  } else {
-    status.style.color = '#ff4d4d';
-    status.innerText = 'Неверный промокод';
-  }
-}
-
-// Проверка офлайн-дохода (до 8 часов)
-function checkOfflineBonus() {
-  const lastTime = parseInt(localStorage.getItem('CYBER_LAST_TIME') || '0', 10);
-  const now = Date.now();
-  localStorage.setItem('CYBER_LAST_TIME', now.toString());
-
-  if (!lastTime) return;
-
-  const diffSec = Math.floor((now - lastTime) / 1000);
-  if (diffSec < 20) return; // Меньше 20 сек отсутствия не считаем
-
-  // Берём текущий доход в секунду из твоих существующих переменных
-  let currentIncome = 0;
-  if (typeof energyPerSecond !== 'undefined') currentIncome = energyPerSecond;
-  else if (typeof passiveIncome !== 'undefined') currentIncome = passiveIncome;
-  else if (typeof getEnergyPerSecond === 'function') currentIncome = getEnergyPerSecond();
-
-  if (currentIncome <= 0) return;
-
-  const cappedSec = Math.min(diffSec, 8 * 3600);
-  pendingOfflineAmount = Math.floor(cappedSec * currentIncome);
-
-  if (pendingOfflineAmount > 0) {
-    const hrs = Math.floor(cappedSec / 3600);
-    const mins = Math.floor((cappedSec % 3600) / 60);
-    let timeStr = (hrs > 0 ? hrs + ' ч. ' : '') + mins + ' мин.';
-
-    const timeLabel = document.getElementById('offline-time-text');
-    const amtLabel = document.getElementById('offline-energy-text');
-    const modal = document.getElementById('modal-offline');
-
-    if (timeLabel) timeLabel.innerText = `Цитадель была автономна (${timeStr}). Дроны добыли:`;
-    if (amtLabel) amtLabel.innerText = `+${pendingOfflineAmount.toLocaleString()} ⚡`;
-    if (modal) modal.style.display = 'flex';
-  }
-}
-
-function claimOfflineIncome() {
-  if (typeof energy !== 'undefined') {
-    energy += pendingOfflineAmount;
-  } else if (window.gameState && window.gameState.energy !== undefined) {
-    window.gameState.energy += pendingOfflineAmount;
-  }
-
-  pendingOfflineAmount = 0;
-  const modal = document.getElementById('modal-offline');
-  if (modal) modal.style.display = 'none';
-
-  if (typeof updateUI === 'function') updateUI();
-  if (typeof saveGame === 'function') saveGame();
-}
-
-// Запись времени при закрытии вкладки
-window.addEventListener('beforeunload', () => {
-  localStorage.setItem('CYBER_LAST_TIME', Date.now().toString());
-});
-window.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') {
-    localStorage.setItem('CYBER_LAST_TIME', Date.now().toString());
-  }
-});
-
-// Запускаем расчёт офлайна при старте
-setTimeout(checkOfflineBonus, 1000);
     </script>
-    <!-- Кнопка вызова окна автора (если её ещё нет в шапке) -->
-<button onclick="openAuthorModal()" style="position:fixed; top:12px; right:12px; z-index:999; background:rgba(18,22,36,0.85); border:1px solid #ff0055; color:#ff0055; padding:8px 12px; border-radius:10px; font-weight:bold; cursor:pointer;">❤️ Автор</button>
-
-<!-- Модальное окно Автора и Промокодов -->
-<div id="modal-author" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center; padding:16px; box-sizing:border-box;">
-  <div style="background:#111422; border:1px solid #00f3ff; border-radius:16px; max-width:380px; width:100%; padding:20px; color:#e0f2fe; position:relative; font-family:sans-serif;">
-    <button onclick="closeAuthorModal()" style="position:absolute; top:12px; right:12px; background:none; border:none; color:#7dd3fc; font-size:18px; cursor:pointer;">✕</button>
-    <h3 style="margin-top:0; color:#fff;">❤️ Поддержать автора</h3>
-    <p style="font-size:12px; color:#7dd3fc; margin-bottom:14px;">Разработка CyberSpire продолжается благодаря вашей поддержке!</p>
-    
-    <a href="https://boosty.to/shapochka_iz_folgi1337/donate" target="_blank" style="display:block; text-align:center; background:#f15f2c; color:#fff; padding:10px; border-radius:8px; text-decoration:none; font-weight:bold; margin-bottom:8px; font-size:13px;">🦊 Подписка на Boosty</a>
-    
-    <a href="https://www.donationalerts.com/r/shapochkaizfolgi1337" target="_blank" style="display:block; text-align:center; background:#f37121; color:#fff; padding:10px; border-radius:8px; text-decoration:none; font-weight:bold; margin-bottom:14px; font-size:13px;">📢 Донат через DonationAlerts</a>
-    
-    <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;">
-      <div style="font-size:11px; text-transform:uppercase; color:#7dd3fc; margin-bottom:6px;">Секретный промокод:</div>
-      <div style="display:flex; gap:6px;">
-        <input type="text" id="promo-input" placeholder="КОД..." style="flex:1; background:rgba(255,255,255,0.08); border:1px solid #00f3ff; border-radius:6px; color:#fff; padding:6px 10px; font-size:12px; text-transform:uppercase; outline:none;">
-        <button onclick="redeemPromo()" style="background:#00f3ff; border:none; border-radius:6px; color:#000; font-weight:bold; padding:6px 12px; cursor:pointer;">Ввод</button>
-      </div>
-      <div id="promo-status" style="font-size:11px; margin-top:6px; min-height:14px;"></div>
-    </div>
-  </div>
-</div>
-
-<!-- Модальное окно Офлайн-дохода -->
-<div id="modal-offline" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:10000; justify-content:center; align-items:center; padding:16px; box-sizing:border-box;">
-  <div style="background:#111422; border:1px solid #00f3ff; border-radius:16px; max-width:340px; width:100%; padding:20px; text-align:center; color:#e0f2fe; font-family:sans-serif;">
-    <h3 style="margin-top:0; color:#00f3ff;">⚡ Связь восстановлена!</h3>
-    <p id="offline-time-text" style="font-size:12px; color:#7dd3fc; margin-bottom:12px;"></p>
-    <div id="offline-energy-text" style="font-size:24px; font-weight:bold; color:#fff; margin-bottom:16px;"></div>
-    <button onclick="claimOfflineIncome()" style="width:100%; background:#00f3ff; border:none; border-radius:8px; padding:10px; color:#000; font-weight:bold; cursor:pointer;">ЗАБРАТЬ ЭНЕРГИЮ</button>
-  </div>
-</div>
 </body>
-  </html>
+</html>
