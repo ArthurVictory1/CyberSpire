@@ -3204,6 +3204,157 @@
             const floors = Math.min(1 + Math.floor(total / 3), 16);
             targetCameraZ = Math.max(5.8 + (floors * 0.16), 6.2 / camera.aspect);
         });
+        // --- ЛОГИКА АВТОРА, ПРОМОКОДОВ И ОФЛАЙНА ---
+let usedPromoCodes = JSON.parse(localStorage.getItem('CYBER_PROMOS') || '[]');
+let pendingOfflineAmount = 0;
+
+function openAuthorModal() {
+  const m = document.getElementById('modal-author');
+  if (m) m.style.display = 'flex';
+}
+
+function closeAuthorModal() {
+  const m = document.getElementById('modal-author');
+  if (m) m.style.display = 'none';
+  const st = document.getElementById('promo-status');
+  if (st) st.innerText = '';
+}
+
+function redeemPromo() {
+  const input = document.getElementById('promo-input');
+  const status = document.getElementById('promo-status');
+  if (!input || !status) return;
+  const code = input.value.trim().toUpperCase();
+
+  if (!code) return;
+
+  if (usedPromoCodes.includes(code)) {
+    status.style.color = '#ff4d4d';
+    status.innerText = 'Промокод уже был активирован!';
+    return;
+  }
+
+  if (code === 'FOLGA1337') {
+    // Начисляем 150 кристаллов
+    if (typeof gems !== 'undefined') {
+      gems += 150;
+    } else if (window.gameState && window.gameState.gems !== undefined) {
+      window.gameState.gems += 150;
+    }
+    
+    usedPromoCodes.push(code);
+    localStorage.setItem('CYBER_PROMOS', JSON.stringify(usedPromoCodes));
+    
+    status.style.color = '#00f3ff';
+    status.innerText = 'Успешно! Получено +150 кристаллов 💎';
+    input.value = '';
+
+    if (typeof updateUI === 'function') updateUI();
+    if (typeof saveGame === 'function') saveGame();
+  } else {
+    status.style.color = '#ff4d4d';
+    status.innerText = 'Неверный промокод';
+  }
+}
+
+// Проверка офлайн-дохода (до 8 часов)
+function checkOfflineBonus() {
+  const lastTime = parseInt(localStorage.getItem('CYBER_LAST_TIME') || '0', 10);
+  const now = Date.now();
+  localStorage.setItem('CYBER_LAST_TIME', now.toString());
+
+  if (!lastTime) return;
+
+  const diffSec = Math.floor((now - lastTime) / 1000);
+  if (diffSec < 20) return; // Меньше 20 сек отсутствия не считаем
+
+  // Берём текущий доход в секунду из твоих существующих переменных
+  let currentIncome = 0;
+  if (typeof energyPerSecond !== 'undefined') currentIncome = energyPerSecond;
+  else if (typeof passiveIncome !== 'undefined') currentIncome = passiveIncome;
+  else if (typeof getEnergyPerSecond === 'function') currentIncome = getEnergyPerSecond();
+
+  if (currentIncome <= 0) return;
+
+  const cappedSec = Math.min(diffSec, 8 * 3600);
+  pendingOfflineAmount = Math.floor(cappedSec * currentIncome);
+
+  if (pendingOfflineAmount > 0) {
+    const hrs = Math.floor(cappedSec / 3600);
+    const mins = Math.floor((cappedSec % 3600) / 60);
+    let timeStr = (hrs > 0 ? hrs + ' ч. ' : '') + mins + ' мин.';
+
+    const timeLabel = document.getElementById('offline-time-text');
+    const amtLabel = document.getElementById('offline-energy-text');
+    const modal = document.getElementById('modal-offline');
+
+    if (timeLabel) timeLabel.innerText = `Цитадель была автономна (${timeStr}). Дроны добыли:`;
+    if (amtLabel) amtLabel.innerText = `+${pendingOfflineAmount.toLocaleString()} ⚡`;
+    if (modal) modal.style.display = 'flex';
+  }
+}
+
+function claimOfflineIncome() {
+  if (typeof energy !== 'undefined') {
+    energy += pendingOfflineAmount;
+  } else if (window.gameState && window.gameState.energy !== undefined) {
+    window.gameState.energy += pendingOfflineAmount;
+  }
+
+  pendingOfflineAmount = 0;
+  const modal = document.getElementById('modal-offline');
+  if (modal) modal.style.display = 'none';
+
+  if (typeof updateUI === 'function') updateUI();
+  if (typeof saveGame === 'function') saveGame();
+}
+
+// Запись времени при закрытии вкладки
+window.addEventListener('beforeunload', () => {
+  localStorage.setItem('CYBER_LAST_TIME', Date.now().toString());
+});
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    localStorage.setItem('CYBER_LAST_TIME', Date.now().toString());
+  }
+});
+
+// Запускаем расчёт офлайна при старте
+setTimeout(checkOfflineBonus, 1000);
     </script>
+    <!-- Кнопка вызова окна автора (если её ещё нет в шапке) -->
+<button onclick="openAuthorModal()" style="position:fixed; top:12px; right:12px; z-index:999; background:rgba(18,22,36,0.85); border:1px solid #ff0055; color:#ff0055; padding:8px 12px; border-radius:10px; font-weight:bold; cursor:pointer;">❤️ Автор</button>
+
+<!-- Модальное окно Автора и Промокодов -->
+<div id="modal-author" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center; padding:16px; box-sizing:border-box;">
+  <div style="background:#111422; border:1px solid #00f3ff; border-radius:16px; max-width:380px; width:100%; padding:20px; color:#e0f2fe; position:relative; font-family:sans-serif;">
+    <button onclick="closeAuthorModal()" style="position:absolute; top:12px; right:12px; background:none; border:none; color:#7dd3fc; font-size:18px; cursor:pointer;">✕</button>
+    <h3 style="margin-top:0; color:#fff;">❤️ Поддержать автора</h3>
+    <p style="font-size:12px; color:#7dd3fc; margin-bottom:14px;">Разработка CyberSpire продолжается благодаря вашей поддержке!</p>
+    
+    <a href="https://boosty.to/shapochka_iz_folgi1337/donate" target="_blank" style="display:block; text-align:center; background:#f15f2c; color:#fff; padding:10px; border-radius:8px; text-decoration:none; font-weight:bold; margin-bottom:8px; font-size:13px;">🦊 Подписка на Boosty</a>
+    
+    <a href="https://www.donationalerts.com/r/shapochkaizfolgi1337" target="_blank" style="display:block; text-align:center; background:#f37121; color:#fff; padding:10px; border-radius:8px; text-decoration:none; font-weight:bold; margin-bottom:14px; font-size:13px;">📢 Донат через DonationAlerts</a>
+    
+    <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;">
+      <div style="font-size:11px; text-transform:uppercase; color:#7dd3fc; margin-bottom:6px;">Секретный промокод:</div>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="promo-input" placeholder="КОД..." style="flex:1; background:rgba(255,255,255,0.08); border:1px solid #00f3ff; border-radius:6px; color:#fff; padding:6px 10px; font-size:12px; text-transform:uppercase; outline:none;">
+        <button onclick="redeemPromo()" style="background:#00f3ff; border:none; border-radius:6px; color:#000; font-weight:bold; padding:6px 12px; cursor:pointer;">Ввод</button>
+      </div>
+      <div id="promo-status" style="font-size:11px; margin-top:6px; min-height:14px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно Офлайн-дохода -->
+<div id="modal-offline" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:10000; justify-content:center; align-items:center; padding:16px; box-sizing:border-box;">
+  <div style="background:#111422; border:1px solid #00f3ff; border-radius:16px; max-width:340px; width:100%; padding:20px; text-align:center; color:#e0f2fe; font-family:sans-serif;">
+    <h3 style="margin-top:0; color:#00f3ff;">⚡ Связь восстановлена!</h3>
+    <p id="offline-time-text" style="font-size:12px; color:#7dd3fc; margin-bottom:12px;"></p>
+    <div id="offline-energy-text" style="font-size:24px; font-weight:bold; color:#fff; margin-bottom:16px;"></div>
+    <button onclick="claimOfflineIncome()" style="width:100%; background:#00f3ff; border:none; border-radius:8px; padding:10px; color:#000; font-weight:bold; cursor:pointer;">ЗАБРАТЬ ЭНЕРГИЮ</button>
+  </div>
+</div>
 </body>
   </html>
