@@ -1034,30 +1034,41 @@
         function claimQuestReward(slotIndex) {
             const q = game.quests[slotIndex];
             const now = Date.now();
+            
+            // Если квест не завершён или слот на перезарядке — блокируем клик
             if (!q || !q.completed || (q.cooldownUntil && now < q.cooldownUntil)) return;
 
+            // 1. ПЕРВЫМ ДЕЛОМ блокируем повторные нажатия и вешаем кулдаун на 10 часов
+            q.completed = false;
+            q.cooldownUntil = now + (10 * 3600 * 1000); // 10 часов
+
+            // 2. Начисляем награды
             addGems(q.rewardGems, `Контракт: ${q.name}`);
-            calculateEconomy();
-            const moneyBonus = Math.max(50, Math.floor(Math.max(10, econ.grossCPS) * q.rewardMoneyMult));
             
-            if (currentLocation === 'orbit') {
-                game.orbit.money += moneyBonus;
-                game.orbit.sessionMoney = (game.orbit.sessionMoney || 0) + moneyBonus;
-                game.orbit.lifetimeMoney = (game.orbit.lifetimeMoney || 0) + moneyBonus;
-            } else {
-                game.money += moneyBonus;
-                game.sessionMoney += moneyBonus;
-                game.lifetimeMoney += moneyBonus;
+            try {
+                calculateEconomy();
+                const currentCPS = (currentLocation === 'orbit') ? (window.orbitEcon ? window.orbitEcon.grossCPS : 10) : (econ ? econ.grossCPS : 10);
+                const moneyBonus = Math.max(50, Math.floor(Math.max(10, currentCPS) * (q.rewardMoneyMult || 100)));
+                
+                if (currentLocation === 'orbit') {
+                    if (!game.orbit) game.orbit = { money: 20, sessionMoney: 20, lifetimeMoney: 20, counts: {}, consumedGridPower: 0 };
+                    game.orbit.money += moneyBonus;
+                    game.orbit.sessionMoney = (game.orbit.sessionMoney || 0) + moneyBonus;
+                    game.orbit.lifetimeMoney = (game.orbit.lifetimeMoney || 0) + moneyBonus;
+                } else {
+                    game.money += moneyBonus;
+                    game.sessionMoney += moneyBonus;
+                    game.lifetimeMoney += moneyBonus;
+                }
+            } catch(e) {
+                console.warn("Ошибка начисления бонуса квеста:", e);
             }
 
             AudioSys.playSuccess();
             Haptics.multiplier();
-            showToast("Контракт закрыт!", `+${q.rewardGems} 💎 и +${formatNumber(moneyBonus)}${currentLocation === 'orbit' ? ' ₡' : ' $'}`, "gold");
+            showToast("Контракт закрыт!", `+${q.rewardGems} 💎 (слот ушёл на перезарядку 10ч)`, "gold");
 
-            // Запускаем кулдаун на 10 часов
-            q.completed = false;
-            q.cooldownUntil = Date.now() + QUEST_COOLDOWN_MS;
-
+            // 3. Сохраняем игру и моментально обновляем интерфейс
             saveGame();
             renderShopStructure();
         }
@@ -2686,21 +2697,26 @@
             econ.totalMaint = maint;
             econ.netCPS = effectiveGross - maint;
 
-            // Расчет Орбиты
+            // Безопасный расчет экономики Орбиты
             if (!game.orbit) game.orbit = { money: 20, sessionMoney: 20, lifetimeMoney: 20, counts: {}, consumedGridPower: 0 };
-            let orbGross = 0, orbMaint = 0, orbPowerUse = 0, orbPowerGen = 20;
+            if (!game.orbit.counts) game.orbit.counts = {};
 
-            ORBIT_BUILDINGS.income.forEach(b => {
-                const count = game.orbit.counts[b.id] || 0;
-                orbGross += count * b.cps;
-                orbMaint += count * b.maint;
-                orbPowerUse += count * b.powerUse;
-            });
-            ORBIT_BUILDINGS.power.forEach(b => {
-                const count = game.orbit.counts[b.id] || 0;
-                orbPowerGen += count * b.powerGen;
-                orbMaint += count * b.maint;
-            });
+            let orbGross = 0, orbMaint = 0, orbPowerUse = 0, orbPowerGen = 20;
+            const orbitData = (typeof ORBIT_BUILDINGS !== 'undefined') ? ORBIT_BUILDINGS : window.ORBIT_BUILDINGS;
+
+            if (orbitData && orbitData.income && orbitData.power) {
+                orbitData.income.forEach(b => {
+                    const count = game.orbit.counts[b.id] || 0;
+                    orbGross += count * b.cps;
+                    orbMaint += count * b.maint;
+                    orbPowerUse += count * b.powerUse;
+                });
+                orbitData.power.forEach(b => {
+                    const count = game.orbit.counts[b.id] || 0;
+                    orbPowerGen += count * b.powerGen;
+                    orbMaint += count * b.maint;
+                });
+            }
 
             const orbIsBlackout = orbPowerUse > orbPowerGen;
             const effectiveOrbGross = orbIsBlackout ? orbGross * 0.2 : orbGross;
