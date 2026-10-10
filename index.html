@@ -60,6 +60,75 @@
 
     <div id="toast-container" class="fixed bottom-3 right-3 z-50 flex flex-col gap-2 pointer-events-none w-72 max-w-[85vw]"></div>
 
+    <!-- Модальное окно Карты Секторов -->
+    <div id="locations-modal" onclick="if(event.target===this)closeLocationsModal()" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-indigo-500/80 rounded-3xl p-5 max-w-sm w-full flex flex-col gap-3.5 shadow-[0_0_50px_rgba(99,102,241,0.35)] animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🌌</span>
+                    <span class="text-xs font-black uppercase text-indigo-300 tracking-wider">Карта Секторов</span>
+                </div>
+                <button onclick="closeLocationsModal()" class="text-slate-400 hover:text-white text-sm px-1.5 py-0.5 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+            </div>
+
+            <div class="flex flex-col gap-2.5">
+                <!-- Земля -->
+                <div class="bg-slate-950/80 border border-emerald-500/50 rounded-2xl p-3 flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-base">🌍</span>
+                            <span class="font-black text-xs text-emerald-400">Метрополия Земля</span>
+                        </div>
+                        <p class="text-[9px] text-slate-400 mt-0.5">Базовая экономика в Долларах ($)</p>
+                    </div>
+                    <button id="loc-btn-earth" onclick="switchLocation('earth')" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs active:scale-95 transition-all">
+                        Перейти
+                    </button>
+                </div>
+
+                <!-- Орбита -->
+                <div class="bg-slate-950/80 border border-indigo-500/50 rounded-2xl p-3 flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-base">🛰️</span>
+                            <span class="font-black text-xs text-indigo-300">Орбитальная Станция</span>
+                        </div>
+                        <p class="text-[9px] text-slate-400 mt-0.5" id="orbit-status-desc">Валюта: Кредиты (₡) • Требуется: 15 ⚛️</p>
+                    </div>
+                    <button id="loc-btn-orbit" onclick="switchLocation('orbit')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs active:scale-95 transition-all">
+                        Перейти
+                    </button>
+                </div>
+
+                <!-- Марс (Размытый сектор) -->
+                <div class="relative overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-950/70 select-none cursor-not-allowed">
+                    <!-- Размытое содержимое сектора -->
+                    <div class="p-3 flex items-center justify-between filter blur-[4px] opacity-35 pointer-events-none">
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-base">🪐</span>
+                                <span class="font-black text-xs text-rose-400">Марсианский Аванпост</span>
+                            </div>
+                            <p class="text-[9px] text-slate-400 mt-0.5">Терраформирование в разработке</p>
+                        </div>
+                        <div class="px-3 py-1.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-xs">
+                            Перейти
+                        </div>
+                    </div>
+
+                    <!-- Плашка поверх размытия по центру -->
+                    <div class="absolute inset-0 flex items-center justify-center bg-slate-950/30">
+                        <div class="flex items-center gap-1.5 px-3 py-1 bg-rose-950/90 border border-rose-500/80 rounded-xl shadow-[0_0_15px_rgba(244,63,94,0.4)]">
+                            <span class="text-xs">🔒</span>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-rose-300 drop-shadow">Скоро</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <!-- Модальное окно Офлайн-дохода -->
     <div id="offline-modal" onclick="if(event.target===this)closeOfflineModal()" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-slate-900 border-2 border-sky-500/80 rounded-2xl p-4 max-w-xs w-full text-center flex flex-col gap-3 shadow-[0_0_40px_rgba(14,165,233,0.4)] animate-in fade-in zoom-in duration-200">
@@ -240,6 +309,10 @@
             <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="uppercase tracking-wider text-slate-400">CyberSpire v7.1</span>
                 
+                <button id="location-select-btn" onclick="openLocationsModal()" class="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-600/80 hover:bg-indigo-900 font-black flex items-center gap-1 shadow transition-all active:scale-95 cursor-pointer" title="Карта секторов">
+                    <span id="current-location-icon">🌍</span> <span id="current-location-name">Земля</span>
+                </button>
+
                 <button onclick="openStatsModal()" class="px-2 py-0.5 rounded bg-slate-800 text-sky-300 border border-slate-700 hover:text-white font-bold flex itmes-center gap-1 shadow transition-all active:scale-95 cursor-pointer" title="Архив показателей">
                     <span>📊</span><span>Статистика</span>
                 </button>
@@ -363,10 +436,89 @@
     </div>
 
     <script>
+        // Глобальная база данных зданий Орбиты
+        const ORBIT_REQUIRED_PRESTIGE = 15;
+        let currentLocation = 'earth';
+
+        const ORBIT_BUILDINGS = {
+            income: [
+                { id: 'sat_repeater', name: "Спутник-ретранслятор", baseCost: 15, cps: 1, maint: 0.2, powerUse: 1 },
+                { id: 'zero_g_lab', name: "Лаборатория невесомости", baseCost: 120, cps: 8, maint: 1.5, powerUse: 5 },
+                { id: 'solar_datacenter', name: "Солнечный дата-хаб", baseCost: 1400, cps: 65, maint: 12, powerUse: 25 },
+                { id: 'quantum_deep_array', name: "Квантовый шлюз Космоса", baseCost: 18000, cps: 520, maint: 85, powerUse: 120 },
+                { id: 'stellar_spire', name: "Звёздный гипер-шпиль", baseCost: 250000, cps: 4800, maint: 550, powerUse: 600 }
+            ],
+            power: [
+                { id: 'solar_sail', name: "Солнечные паруса", baseCost: 60, powerGen: 20, maint: 1.0 },
+                { id: 'helios_fusion', name: "Реактор «Гелиос»", baseCost: 2200, powerGen: 250, maint: 25 }
+            ]
+        };
+        window.ORBIT_BUILDINGS = ORBIT_BUILDINGS;
+        window.orbitEcon = { grossCPS: 0, totalMaint: 0, netCPS: 0, totalPowerGen: 20, totalPowerUsed: 0, isBlackout: false };
+
         const SAVE_KEY = 'cyberspire_save_v7';
 
         const AUTHOR_BOOSTY_URL = "https://boosty.to/shapochka_iz_folgi1337/donate"; 
         const AUTHOR_DONATIONALERTS_URL = "https://www.donationalerts.com/r/shapochkaizfolgi1337";
+
+        function openLocationsModal() {
+            const modal = document.getElementById('locations-modal');
+            const totalPrestiges = (game.stats && game.stats.totalPrestigeCount) || 0;
+            const orbitBtn = document.getElementById('loc-btn-orbit');
+            const orbitDesc = document.getElementById('orbit-status-desc');
+
+            if (totalPrestiges >= ORBIT_REQUIRED_PRESTIGE) {
+                orbitBtn.className = "px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs active:scale-95 transition-all cursor-pointer";
+                orbitBtn.innerText = currentLocation === 'orbit' ? "Текущий" : "Перейти";
+                orbitDesc.innerText = "Валюта: Кредиты (₡) • ДОСТУП РАЗРЕШЕН";
+                orbitDesc.className = "text-[9px] text-emerald-400 mt-0.5";
+            } else {
+                orbitBtn.className = "px-3 py-1.5 bg-slate-800 text-slate-500 font-bold rounded-xl text-xs cursor-not-allowed opacity-60";
+                orbitBtn.innerText = `Блок (${totalPrestiges}/${ORBIT_REQUIRED_PRESTIGE} ⚛️)`;
+                orbitDesc.innerText = `Требуется 15 слияний (осталось: ${ORBIT_REQUIRED_PRESTIGE - totalPrestiges})`;
+                orbitDesc.className = "text-[9px] text-rose-400 mt-0.5";
+            }
+
+            const earthBtn = document.getElementById('loc-btn-earth');
+            if (earthBtn) earthBtn.innerText = currentLocation === 'earth' ? "Текущий" : "Перейти";
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeLocationsModal() {
+            document.getElementById('locations-modal').classList.add('hidden');
+        }
+
+        function switchLocation(targetLoc) {
+            if (targetLoc === currentLocation) {
+                closeLocationsModal();
+                return;
+            }
+
+            if (targetLoc === 'orbit') {
+                const totalPrestiges = (game.stats && game.stats.totalPrestigeCount) || 0;
+                if (totalPrestiges < ORBIT_REQUIRED_PRESTIGE) {
+                    showToast("Сектор заблокирован!", `Требуется ещё ${ORBIT_REQUIRED_PRESTIGE - totalPrestiges} слияний ⚛️`, "danger");
+                    return;
+                }
+            }
+
+            currentLocation = targetLoc;
+
+            const iconEl = document.getElementById('current-location-icon');
+            const nameEl = document.getElementById('current-location-name');
+            if (iconEl) iconEl.innerText = currentLocation === 'orbit' ? '🛰️' : '🌍';
+            if (nameEl) nameEl.innerText = currentLocation === 'orbit' ? 'Орбита' : 'Земля';
+
+            showToast("Смена сектора", currentLocation === 'orbit' ? "Вход на Орбитальную Станцию (₡)" : "Возвращение на Землю ($)", "purple");
+
+            closeLocationsModal();
+            calculateEconomy();
+            renderShopStructure();
+            updateShopButtons();
+            updateUI();
+            saveGame();
+        }
 
         function openAuthorSupportModal() {
             document.getElementById('author-boosty-btn').href = AUTHOR_BOOSTY_URL;
@@ -677,11 +829,11 @@
         const AUTOCLICK_COSTS = [0, 15, 30, 55, 85, 130];
 
         const SKINS = [
-            { id: 'default', name: 'Кибер-Неон', cost: 0, pylon: 0x0f172a, strip: 0x38bdf8, rim: 0x0ea5e9, desc: 'Классическая неоновая цитадель' },
-            { id: 'magma', name: 'Вулкан-Магма', cost: 50, pylon: 0x240c0c, strip: 0xf97316, rim: 0xe11d48, desc: 'Обсидиан и плазменные магма-каналы' },
-            { id: 'emerald', name: 'Изумрудный Век', cost: 100, pylon: 0x072118, strip: 0x10b981, rim: 0x059669, desc: 'Био-кристаллическая титановая броня' },
-            { id: 'void', name: 'Тёмная Бездна', cost: 200, pylon: 0x160829, strip: 0xc084fc, rim: 0x9333ea, desc: 'Пластины из плотной тёмной материи' },
-            { id: 'gold', name: 'Золотой Синдикат', cost: 350, pylon: 0x241a08, strip: 0xfacc15, rim: 0xd97706, desc: 'Премиальная позолота высшего руководства' }
+            { id: 'default', name: 'Кибер-Неон', cost: 0, pylon: 0x0f172a, strip: 0x38bdf8, rim: 0x0ea5e9, windowTint: 0x38bdf8, cornice: 0x1e293b, reactor: 0x38bdf8, emissive: 0x0284c7, desc: 'Классическая неоновая цитадель' },
+            { id: 'magma', name: 'Вулкан-Магма', cost: 50, pylon: 0x240c0c, strip: 0xf97316, rim: 0xe11d48, windowTint: 0xf97316, cornice: 0x381212, reactor: 0xff4400, emissive: 0x991b1b, desc: 'Обсидиан и плазменные магма-каналы' },
+            { id: 'emerald', name: 'Изумрудный Век', cost: 100, pylon: 0x072118, strip: 0x10b981, rim: 0x059669, windowTint: 0x10b981, cornice: 0x064e3b, reactor: 0x10b981, emissive: 0x047857, desc: 'Био-кристаллическая титановая броня' },
+            { id: 'void', name: 'Тёмная Бездна', cost: 200, pylon: 0x160829, strip: 0xc084fc, rim: 0x9333ea, windowTint: 0xc084fc, cornice: 0x2e1065, reactor: 0xc084fc, emissive: 0x7e22ce, desc: 'Пластины из плотной тёмной материи' },
+            { id: 'gold', name: 'Золотой Синдикат', cost: 350, pylon: 0x241a08, strip: 0xfacc15, rim: 0xd97706, windowTint: 0xfacc15, cornice: 0x452a05, reactor: 0xfacc15, emissive: 0xb45309, desc: 'Премиальная позолота высшего руководства' }
         ];
 
         const DAILY_REWARDS = [
@@ -745,11 +897,20 @@
 
         let game = {
             money: 15,
+            currentLocation: 'earth',
+            orbit: {
+                money: 20,
+                sessionMoney: 20,
+                lifetimeMoney: 20,
+                counts: { sat_repeater: 0, zero_g_lab: 0, solar_datacenter: 0, quantum_deep_array: 0, stellar_spire: 0, solar_sail: 0, helios_fusion: 0 },
+                consumedGridPower: 0
+            },
             consumedGridPower: 0,
             sessionMoney: 15,
             lifetimeMoney: 15,
             basePowerCapacity: 6,
             counts: { i1: 0, i2: 0, i3: 0, i4: 0, p1: 0, p2: 0, p3: 0 },
+
             
             gems: 0,
             quests: [],
@@ -776,10 +937,11 @@
             prestigeUpgrades: { q_click: 0, q_cooling: 0, q_income: 0, q_offline: 0 }
         };
 
-                // ==========================================
-        // МОДУЛЬ: ДИНАМИЧЕСКИЕ КВЕСТЫ (КОНТРАКТЫ)
+        // ==========================================
+        // МОДУЛЬ: ДИНАМИЧЕСКИЕ КВЕСТЫ (КОНТРАКТЫ С КУЛДАУНОМ 10 ЧАСОВ)
         // ==========================================
         let goalsSubTab = 'quests'; // 'quests' | 'achievements'
+        const QUEST_COOLDOWN_MS = 10 * 3600 * 1000; // 10 часов кулдауна
 
         const QUEST_POOL = [
             { type: 'clicks', name: 'Ручная синхронизация', desc: 'Сделать ручные тапы', target: 50, rewardGems: 8, rewardMoneyMult: 120 },
@@ -797,6 +959,8 @@
                 for (let i = 0; i < 3; i++) {
                     generateNewQuest(i);
                 }
+            } else {
+                checkQuestsCooldown();
             }
         }
 
@@ -811,16 +975,40 @@
                 current: 0,
                 rewardGems: template.rewardGems,
                 rewardMoneyMult: template.rewardMoneyMult,
-                completed: false
+                completed: false,
+                cooldownUntil: 0
             };
+        }
+
+        function checkQuestsCooldown() {
+            if (!game.quests) return;
+            const now = Date.now();
+            let changed = false;
+
+            game.quests.forEach((q, idx) => {
+                if (q && q.cooldownUntil && now >= q.cooldownUntil) {
+                    generateNewQuest(idx);
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                saveGame();
+                if (activeTab === 'achievements' && goalsSubTab === 'quests') {
+                    renderShopStructure();
+                }
+            }
         }
 
         function trackQuestProgress(type, amount) {
             if (!game.quests) return;
+            const now = Date.now();
             let changed = false;
 
             game.quests.forEach((q, idx) => {
-                if (q.completed) return;
+                if (!q || q.completed) return;
+                if (q.cooldownUntil && now < q.cooldownUntil) return; // Пропускаем слоты на кулдауне
+
                 if (q.type === type) {
                     if (type === 'combo') {
                         if (amount >= q.target) {
@@ -838,27 +1026,38 @@
                 }
             });
 
-            if (changed && activeTab === 'achievements') {
+            if (changed && activeTab === 'achievements' && goalsSubTab === 'quests') {
                 renderShopStructure();
             }
         }
 
         function claimQuestReward(slotIndex) {
             const q = game.quests[slotIndex];
-            if (!q || !q.completed) return;
+            const now = Date.now();
+            if (!q || !q.completed || (q.cooldownUntil && now < q.cooldownUntil)) return;
 
             addGems(q.rewardGems, `Контракт: ${q.name}`);
             calculateEconomy();
             const moneyBonus = Math.max(50, Math.floor(Math.max(10, econ.grossCPS) * q.rewardMoneyMult));
-            game.money += moneyBonus;
-            game.sessionMoney += moneyBonus;
-            game.lifetimeMoney += moneyBonus;
+            
+            if (currentLocation === 'orbit') {
+                game.orbit.money += moneyBonus;
+                game.orbit.sessionMoney = (game.orbit.sessionMoney || 0) + moneyBonus;
+                game.orbit.lifetimeMoney = (game.orbit.lifetimeMoney || 0) + moneyBonus;
+            } else {
+                game.money += moneyBonus;
+                game.sessionMoney += moneyBonus;
+                game.lifetimeMoney += moneyBonus;
+            }
 
             AudioSys.playSuccess();
             Haptics.multiplier();
-            showToast("Контракт закрыт!", `+${q.rewardGems} 💎 и +${formatNumber(moneyBonus)} $`, "gold");
+            showToast("Контракт закрыт!", `+${q.rewardGems} 💎 и +${formatNumber(moneyBonus)}${currentLocation === 'orbit' ? ' ₡' : ' $'}`, "gold");
 
-            generateNewQuest(slotIndex);
+            // Запускаем кулдаун на 10 часов
+            q.completed = false;
+            q.cooldownUntil = Date.now() + QUEST_COOLDOWN_MS;
+
             saveGame();
             renderShopStructure();
         }
@@ -962,13 +1161,16 @@
         }
 
         function getBatchCostInfo(b, currentCount, targetMult) {
+            const isOrbit = (currentLocation === 'orbit');
+            const availableMoney = isOrbit ? ((game.orbit && game.orbit.money) || 0) : game.money;
+
             if (targetMult === 'max') {
                 let totalCost = 0;
                 let countToBuy = 0;
                 let c = currentCount;
                 while (true) {
                     const nextCost = Math.floor(b.baseCost * Math.pow(1.16, c));
-                    if (game.money >= totalCost + nextCost) {
+                    if (availableMoney >= totalCost + nextCost) {
                         totalCost += nextCost;
                         countToBuy++;
                         c++;
@@ -987,9 +1189,10 @@
                 for (let i = 0; i < n; i++) {
                     totalCost += Math.floor(b.baseCost * Math.pow(1.16, currentCount + i));
                 }
-                return { count: n, cost: totalCost, canAfford: game.money >= totalCost };
+                return { count: n, cost: totalCost, canAfford: availableMoney >= totalCost };
             }
         }
+
 
         function isDailyAvailable() {
             const now = Date.now();
@@ -1083,13 +1286,37 @@
 
         function applyActiveSkin() {
             const skin = SKINS.find(s => s.id === (game.activeSkin || 'default')) || SKINS[0];
+            if (!skin) return;
+
+            // Пилоны, неоновые полосы и карнизы башни
             if (pylonMat) pylonMat.color.setHex(skin.pylon);
             if (neonStripMat) neonStripMat.color.setHex(skin.strip);
+            if (corniceMat) corniceMat.color.setHex(skin.cornice);
+            
+            // Фасад и окна башни
+            if (coreFacadeMat) {
+                coreFacadeMat.color.setHex(econ && econ.isBlackout ? 0x475569 : skin.windowTint);
+            }
+            if (dishMat) dishMat.color.setHex(skin.strip);
+
+            // Обод платформы и кольцо
             if (rimMesh) rimMesh.material.color.setHex(skin.rim);
+            if (mechRing) mechRing.material.color.setHex(skin.strip);
+
+            // Реактор на вершине башни и частицы
+            if (reactorCoreMat && currentMultiplier < 3) {
+                reactorCoreMat.color.setHex(skin.reactor);
+                reactorCoreMat.emissive.setHex(skin.emissive);
+            }
+            if (gyroRing2) gyroRing2.material.color.setHex(skin.strip);
+            if (coreLight && currentMultiplier < 3) coreLight.color.setHex(skin.reactor);
+            if (tapMat) tapMat.color.setHex(skin.strip);
+
             if (laserMat && currentMultiplier < 3 && !AntiCheat.isOverheated) {
                 laserMat.color.setHex(skin.strip);
             }
         }
+
 
         function selectSkin(skinId) {
             const skin = SKINS.find(s => s.id === skinId);
@@ -1123,18 +1350,27 @@
         }
 
         function sellBuilding(id) {
-            const count = game.counts[id] || 0;
+            const isOrbit = (currentLocation === 'orbit');
+            const source = isOrbit ? ORBIT_BUILDINGS : BUILDINGS;
+            const currentCounts = isOrbit ? game.orbit.counts : game.counts;
+            const count = currentCounts[id] || 0;
             if (count <= 0) return;
 
-            const list = activeTab === 'income' ? BUILDINGS.income : BUILDINGS.power;
+            const list = activeTab === 'income' ? source.income : source.power;
             const b = list.find(item => item.id === id);
             if (!b) return;
 
             const refund = Math.floor(getBuildingCost(b, count - 1) * 0.7);
+            const curSym = isOrbit ? ' ₡' : ' $';
             AudioSys.play('buy', 0.4);
 
-            game.money += refund;
-            game.counts[id] = count - 1;
+            if (isOrbit) {
+                game.orbit.money += refund;
+                game.orbit.counts[id] = count - 1;
+            } else {
+                game.money += refund;
+                game.counts[id] = count - 1;
+            }
             game.stats.buildingsSold = (game.stats.buildingsSold || 0) + 1;
 
             calculateEconomy();
@@ -1145,8 +1381,9 @@
             updateShopButtons();
             checkAchievements();
 
-            showToast("Здание продано", `${b.name} демонтирован. Возврат: +${formatNumber(refund)} $`, "info");
+            showToast("Здание продано", `${b.name} демонтирован. Возврат: +${formatNumber(refund)}${curSym}`, "info");
         }
+
 
         function exchangeGridPowerForGems(gemAmount) {
             const requiredPower = gemAmount * 500;
@@ -1242,6 +1479,8 @@
                     prestigeCores: game.prestigeCores,
                     prestigeUpgrades: game.prestigeUpgrades,
                     quests: game.quests,
+                    currentLocation: currentLocation,
+                    orbit: game.orbit,
                     timestamp: Date.now()
                 };
                 localStorage.setItem(SAVE_KEY, JSON.stringify(saveState));
@@ -1274,6 +1513,16 @@
                 const data = JSON.parse(raw);
 
                 if (typeof data.money === 'number') game.money = data.money;
+                if (typeof data.currentLocation === 'string') currentLocation = data.currentLocation;
+                if (data.orbit) {
+                    game.orbit = {
+                        money: typeof data.orbit.money === 'number' ? data.orbit.money : 20,
+                        sessionMoney: typeof data.orbit.sessionMoney === 'number' ? data.orbit.sessionMoney : 20,
+                        lifetimeMoney: typeof data.orbit.lifetimeMoney === 'number' ? data.orbit.lifetimeMoney : 20,
+                        counts: data.orbit.counts || {},
+                        consumedGridPower: data.orbit.consumedGridPower || 0
+                    };
+                }
                 if (typeof data.consumedGridPower === 'number') game.consumedGridPower = data.consumedGridPower;
                 if (typeof data.sessionMoney === 'number') game.sessionMoney = data.sessionMoney;
                 if (typeof data.lifetimeMoney === 'number') game.lifetimeMoney = data.lifetimeMoney;
@@ -1633,7 +1882,7 @@
             return new THREE.CanvasTexture(canvas);
         }
 
-        function createSciFiFacadeTexture() {
+                function createSciFiFacadeTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 512;
             canvas.height = 512;
@@ -1655,7 +1904,7 @@
                 for (let x = 16; x < 512; x += 32) {
                     const r = Math.random();
                     if (r > 0.35) {
-                        ctx.fillStyle = r > 0.85 ? '#38bdf8' : (r > 0.65 ? '#0284c7' : '#1e3a8a');
+                        ctx.fillStyle = r > 0.85 ? '#ffffff' : (r > 0.65 ? '#cbd5e1' : '#64748b');
                         ctx.shadowColor = ctx.fillStyle;
                         ctx.shadowBlur = 8;
                         ctx.fillRect(x, y, 16, 36);
@@ -1664,8 +1913,8 @@
                 }
             }
 
-            ctx.fillStyle = '#0ea5e9';
-            ctx.shadowColor = '#0ea5e9';
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#ffffff';
             ctx.shadowBlur = 12;
             ctx.fillRect(252, 0, 8, 512);
             ctx.shadowBlur = 0;
@@ -1675,6 +1924,7 @@
             tex.wrapT = THREE.RepeatWrapping;
             return tex;
         }
+
 
         function createHexIslandTexture() {
             const canvas = document.createElement('canvas');
@@ -2014,6 +2264,15 @@
             roughness: 0.25
         });
 
+        const coreFacadeMat = new THREE.MeshStandardMaterial({
+            map: facadeTexture,
+            roughness: 0.35,
+            metalness: 0.6,
+            color: 0x38bdf8
+        });
+        const dishMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.9 });
+
+
         function rebuild3DBuilding() {
             towerParts.forEach(p => towerGroup.remove(p));
             towerParts = [];
@@ -2036,13 +2295,9 @@
 
                 const coreMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(floorW * 0.92, floorH * 0.92, floorD * 0.92),
-                    new THREE.MeshStandardMaterial({
-                        map: facadeTexture,
-                        roughness: 0.35,
-                        metalness: 0.6,
-                        color: econ.isBlackout ? 0x475569 : 0xffffff
-                    })
+                    coreFacadeMat
                 );
+
                 coreMesh.castShadow = true;
                 coreMesh.receiveShadow = true;
                 floorGroup.add(coreMesh);
@@ -2068,15 +2323,10 @@
                 cornice.castShadow = true;
                 floorGroup.add(cornice);
 
-                if (i % 2 === 1) {
-                    const dish = new THREE.Mesh(
+                const dish = new THREE.Mesh(
                         new THREE.CylinderGeometry(0.12, 0.02, 0.08, 16),
-                        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.9 })
-                    );
-                    dish.rotation.z = Math.PI / 3;
-                    dish.position.set(halfW + 0.1, 0, 0);
-                    floorGroup.add(dish);
-                }
+                        dishMat
+                );
 
                 towerGroup.add(floorGroup);
                 towerParts.push(floorGroup);
@@ -2323,9 +2573,19 @@
             const vipMultiplier = game.vipUpgrades.permX2 ? 2 : 1;
             const clickVal = 1 * currentMultiplier * prestigeClickMultiplier * vipMultiplier * (econ.isBlackout ? 0.2 : 1);
             
-            game.money += clickVal;
-            game.sessionMoney += clickVal;
-            game.lifetimeMoney += clickVal;
+                        const isOrbit = (currentLocation === 'orbit');
+            const curSym = isOrbit ? ' ₡' : ' $';
+
+            if (isOrbit) {
+                if (!game.orbit) game.orbit = { money: 20, sessionMoney: 20, lifetimeMoney: 20, counts: {}, consumedGridPower: 0 };
+                game.orbit.money += clickVal;
+                game.orbit.sessionMoney = (game.orbit.sessionMoney || 0) + clickVal;
+                game.orbit.lifetimeMoney = (game.orbit.lifetimeMoney || 0) + clickVal;
+            } else {
+                game.money += clickVal;
+                game.sessionMoney += clickVal;
+                game.lifetimeMoney += clickVal;
+            }
 
             updateMoneyDisplay();
 
@@ -2336,13 +2596,13 @@
 
             if (!isAuto) {
                 const el = document.createElement('div');
-                let color = 'text-emerald-400 text-xs';
+                let color = isOrbit ? 'text-indigo-300 text-xs' : 'text-emerald-400 text-xs';
                 if (currentMultiplier === 2) color = 'text-sky-300 text-sm font-bold';
                 if (currentMultiplier === 3) color = 'text-amber-300 text-base font-extrabold';
                 if (currentMultiplier === 5) color = 'text-rose-400 text-xl font-black';
 
                 el.className = `floating-text ${color}`;
-                el.innerText = `+${clickVal.toFixed(1)}$`;
+                el.innerText = `+${clickVal.toFixed(1)}${curSym}`;
                 el.style.left = clientX + 'px';
                 el.style.top = clientY + 'px';
                 document.body.appendChild(el);
@@ -2425,6 +2685,34 @@
             econ.grossCPS = effectiveGross;
             econ.totalMaint = maint;
             econ.netCPS = effectiveGross - maint;
+
+            // Расчет Орбиты
+            if (!game.orbit) game.orbit = { money: 20, sessionMoney: 20, lifetimeMoney: 20, counts: {}, consumedGridPower: 0 };
+            let orbGross = 0, orbMaint = 0, orbPowerUse = 0, orbPowerGen = 20;
+
+            ORBIT_BUILDINGS.income.forEach(b => {
+                const count = game.orbit.counts[b.id] || 0;
+                orbGross += count * b.cps;
+                orbMaint += count * b.maint;
+                orbPowerUse += count * b.powerUse;
+            });
+            ORBIT_BUILDINGS.power.forEach(b => {
+                const count = game.orbit.counts[b.id] || 0;
+                orbPowerGen += count * b.powerGen;
+                orbMaint += count * b.maint;
+            });
+
+            const orbIsBlackout = orbPowerUse > orbPowerGen;
+            const effectiveOrbGross = orbIsBlackout ? orbGross * 0.2 : orbGross;
+            window.orbitEcon = {
+                grossCPS: effectiveOrbGross,
+                totalMaint: orbMaint,
+                netCPS: effectiveOrbGross - orbMaint,
+                totalPowerGen: orbPowerGen,
+                totalPowerUsed: orbPowerUse,
+                isBlackout: orbIsBlackout
+            };
+
         }
 
         const GLOBAL_EVENTS = [
@@ -2599,18 +2887,25 @@
                 return;
             }
 
-            const list = activeTab === 'income' ? BUILDINGS.income : BUILDINGS.power;
+            const isOrbit = (currentLocation === 'orbit');
+            const source = isOrbit ? ORBIT_BUILDINGS : BUILDINGS;
+            const list = activeTab === 'income' ? source.income : source.power;
             const b = list.find(item => item.id === id);
             if (!b) return;
 
-            const currentCount = game.counts[id] || 0;
+            const currentCount = isOrbit ? (game.orbit.counts[id] || 0) : (game.counts[id] || 0);
             const batchInfo = getBatchCostInfo(b, currentCount, buyMultiplier);
 
             if (batchInfo.canAfford && batchInfo.count > 0) {
                 AudioSys.play('buy', 0.5);
-                game.money -= batchInfo.cost;
-                game.counts[id] = currentCount + batchInfo.count;
-                trackQuestProgress('buy',batchInfo.count);
+                if (isOrbit) {
+                    game.orbit.money -= batchInfo.cost;
+                    game.orbit.counts[id] = currentCount + batchInfo.count;
+                } else {
+                    game.money -= batchInfo.cost;
+                    game.counts[id] = currentCount + batchInfo.count;
+                }
+                trackQuestProgress('buy', batchInfo.count);
                 calculateEconomy();
                 rebuild3DBuilding();
                 checkAchievements();
@@ -2619,6 +2914,7 @@
                 updateShopButtons();
             }
         }
+
 
         function buyVipUpgrade(id) {
             if (id === 'vip_autoclick') {
@@ -2691,14 +2987,16 @@
         }
 
         function getBuildingDetails(b, type) {
+            const curSym = (currentLocation === 'orbit') ? '₡' : '$';
             if (type === 'income') {
-                return `<span class="text-emerald-400">+${b.cps}$/с</span> | <span class="text-rose-400">-${b.maint}$</span> | <span class="text-amber-400">-${b.powerUse}⚡</span>`;
+                return `<span class="text-emerald-400">+${b.cps}${curSym}/с</span> | <span class="text-rose-400">-${b.maint}${curSym}</span> | <span class="text-amber-400">-${b.powerUse}⚡</span>`;
             }
             if (type === 'power') {
-                return `<span class="text-sky-400">+${b.powerGen}⚡</span> | <span class="text-rose-400">-${b.maint}$</span>`;
+                return `<span class="text-sky-400">+${b.powerGen}⚡</span> | <span class="text-rose-400">-${b.maint}${curSym}</span>`;
             }
             return `<span class="text-purple-300 font-semibold">${b.desc}</span>`;
         }
+
 
         function renderShopStructure() {
             const listContainer = document.getElementById('shop-container');
@@ -2724,9 +3022,37 @@
 
                 // РЕЖИМ 1: ДИНАМИЧЕСКИЕ КОНТРАКТЫ (КВЕСТЫ)
                 if (goalsSubTab === 'quests') {
+                    const now = Date.now();
                     game.quests.forEach((q, idx) => {
-                        const pct = Math.min(100, Math.floor((q.current / q.target) * 100));
                         const row = document.createElement('div');
+                        
+                        // Если слот на 10-часовом кулдауне
+                        if (q.cooldownUntil && now < q.cooldownUntil) {
+                            const leftSec = Math.ceil((q.cooldownUntil - now) / 1000);
+                            row.className = 'p-2.5 rounded-xl border border-slate-800 bg-slate-950/70 flex flex-col gap-1.5 text-xs opacity-75';
+                            row.innerHTML = `
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="font-bold text-slate-300">📡 Канал связи на перезарядке</p>
+                                        <p class="text-[9px] text-slate-400">Синхронизация новых директив со штабом...</p>
+                                    </div>
+                                    <span class="text-base">⏳</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-2 mt-0.5">
+                                    <span class="text-[10px] font-mono text-amber-300 font-bold quest-timer-slot" data-slot="${idx}">
+                                        Доступно через: ${formatTimeSpan(leftSec)}
+                                    </span>
+                                    <span class="px-2.5 py-1 rounded-lg text-[9px] font-black bg-slate-800 text-slate-500 cursor-not-allowed">
+                                        ОЖИДАНИЕ
+                                    </span>
+                                </div>
+                            `;
+                            listContainer.appendChild(row);
+                            return;
+                        }
+
+                        // Активный квест
+                        const pct = Math.min(100, Math.floor((q.current / q.target) * 100));
                         row.className = `p-2.5 rounded-xl border flex flex-col gap-1.5 text-xs ${
                             q.completed 
                                 ? 'bg-gradient-to-r from-amber-950/70 to-slate-900 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)]' 
@@ -3032,7 +3358,8 @@
                 return;
             }
 
-            const items = activeTab === 'income' ? BUILDINGS.income : BUILDINGS.power;
+            const source = (currentLocation === 'orbit') ? ORBIT_BUILDINGS : BUILDINGS;
+            const items = activeTab === 'income' ? source.income : source.power;
             items.forEach(b => {
                 const row = document.createElement('div');
                 row.className = 'flex items-center justify-between bg-slate-800/60 p-2 rounded-xl border border-slate-700/60 text-xs gap-1';
@@ -3164,12 +3491,16 @@
                 return;
             }
 
-            const items = activeTab === 'income' ? BUILDINGS.income : BUILDINGS.power;
+            const isOrbit = (currentLocation === 'orbit');
+            const source = isOrbit ? ORBIT_BUILDINGS : BUILDINGS;
+            const items = activeTab === 'income' ? source.income : source.power;
+
             items.forEach(b => {
                 const row = listContainer.querySelector(`[data-id="${b.id}"]`);
                 if (!row) return;
 
-                const count = game.counts[b.id] || 0;
+                const currentCounts = isOrbit ? game.orbit.counts : game.counts;
+                const count = currentCounts[b.id] || 0;
                 const batchInfo = getBatchCostInfo(b, count, buyMultiplier);
 
                 const btn = row.querySelector('[data-btn]');
@@ -3177,7 +3508,8 @@
                 const costEl = row.querySelector('[data-cost]');
                 const countEl = row.querySelector('[data-count]');
 
-                const costStr = formatNumber(batchInfo.cost) + ' $';
+                const curSym = isOrbit ? ' ₡' : ' $';
+                const costStr = formatNumber(batchInfo.cost) + curSym;
                 if (costEl.innerText !== costStr) costEl.innerText = costStr;
 
                 const countStr = `+${batchInfo.count} (${count})`;
@@ -3186,7 +3518,7 @@
                 if (count > 0) {
                     const refund = Math.floor(getBuildingCost(b, count - 1) * 0.7);
                     sellBtn.classList.remove('hidden');
-                    sellBtn.innerText = `−${formatNumber(refund)}$`;
+                    sellBtn.innerText = `−${formatNumber(refund)}${curSym}`;
                 } else {
                     sellBtn.classList.add('hidden');
                 }
@@ -3194,35 +3526,42 @@
                 if (buttonAffordanceCache[b.id] !== batchInfo.canAfford) {
                     buttonAffordanceCache[b.id] = batchInfo.canAfford;
                     btn.className = `px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap text-xs min-w-[70px] text-center ${
-                        batchInfo.canAfford ? 'bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 cursor-pointer shadow-sm'
+                        batchInfo.canAfford ? (isOrbit ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-sm active:scale-95' : 'bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 cursor-pointer shadow-sm')
                                             : 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                     }`;
                 }
             });
+
         }
 
         function updateMoneyDisplay() {
-            const moneyFormatted = formatNumber(game.money) + ' $';
-            const moneyEl = document.getElementById('money');
-            moneyEl.innerText = moneyFormatted;
+            const isOrbit = (currentLocation === 'orbit');
+            const currentVal = isOrbit ? ((game.orbit && game.orbit.money) || 0) : game.money;
+            const curSym = isOrbit ? ' ₡' : ' $';
 
-            if (game.money < 0) {
-                moneyEl.className = 'text-2xl sm:text-3xl font-black text-rose-500 animate-pulse';
-            } else {
-                moneyEl.className = 'text-2xl sm:text-3xl font-black text-emerald-400';
+            const moneyFormatted = formatNumber(currentVal) + curSym;
+            const moneyEl = document.getElementById('money');
+            if (moneyEl) {
+                moneyEl.innerText = moneyFormatted;
+                if (currentVal < 0) {
+                    moneyEl.className = 'text-2xl sm:text-3xl font-black text-rose-500 animate-pulse';
+                } else {
+                    moneyEl.className = isOrbit ? 'text-2xl sm:text-3xl font-black text-indigo-400' : 'text-2xl sm:text-3xl font-black text-emerald-400';
+                }
             }
             
             const sidebarMoneyEl = document.getElementById('sidebar-money');
             if (sidebarMoneyEl) {
                 sidebarMoneyEl.innerText = moneyFormatted;
-                sidebarMoneyEl.className = game.money < 0 ? 'text-xs font-black text-rose-500 font-mono' : 'text-xs font-black text-emerald-400 font-mono';
+                sidebarMoneyEl.className = currentVal < 0 ? 'text-xs font-black text-rose-500 font-mono' : (isOrbit ? 'text-xs font-black text-indigo-300 font-mono' : 'text-xs font-black text-emerald-400 font-mono');
             }
 
             const debtWarning = document.getElementById('debt-warning');
             if (debtWarning) {
-                debtWarning.classList.toggle('hidden', game.money >= 0);
+                debtWarning.classList.toggle('hidden', currentVal >= 0);
             }
         }
+
 
         function updateUI() {
             calculateEconomy();
@@ -3232,27 +3571,30 @@
             updateGemsUI();
             updateDailyBonusButtonStatus();
             
+            const isOrbit = (currentLocation === 'orbit');
+            const curEcon = isOrbit ? window.orbitEcon : econ;
+            const curSym = isOrbit ? ' ₡/с' : ' $/с';
             const mult = currentMultiplier;
-            const netVal = econ.netCPS * mult;
+            const netVal = curEcon.netCPS * mult;
             const netEl = document.getElementById('net-cps');
 
             if (netVal < -0.04) {
-                netEl.innerText = netVal.toFixed(1);
+                netEl.innerText = netVal.toFixed(1) + curSym;
                 netEl.className = 'text-rose-400 font-bold';
             } else if (netVal > 0.04) {
-                netEl.innerText = '+' + netVal.toFixed(1);
-                netEl.className = 'text-emerald-400';
+                netEl.innerText = '+' + netVal.toFixed(1) + curSym;
+                netEl.className = isOrbit ? 'text-indigo-400 font-black' : 'text-emerald-400 font-black';
             } else {
-                netEl.innerText = '+0.0';
+                netEl.innerText = '+0.0' + curSym;
                 netEl.className = 'text-slate-400';
             }
 
-            document.getElementById('maint-cost').innerText = econ.totalMaint.toFixed(1);
-            document.getElementById('energy-used').innerText = econ.totalPowerUsed;
-            document.getElementById('energy-total').innerText = econ.totalPowerGen;
+            document.getElementById('maint-cost').innerText = curEcon.totalMaint.toFixed(1);
+            document.getElementById('energy-used').innerText = curEcon.totalPowerUsed;
+            document.getElementById('energy-total').innerText = curEcon.totalPowerGen;
 
             const gridStatus = document.getElementById('grid-status');
-            if (econ.isBlackout) {
+            if (curEcon.isBlackout) {
                 gridStatus.innerText = 'ДЕФИЦИТ (-80%)';
                 gridStatus.className = 'ml-1 text-[9px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-700 animate-pulse font-black';
             } else {
@@ -3262,6 +3604,7 @@
 
             updateShopButtons();
         }
+
 
         setInterval(() => {
             const mult = currentMultiplier;
@@ -3278,8 +3621,39 @@
                 }
             }
 
+            // Фоновое начисление кредитов (₡) для Орбиты
+            if (window.orbitEcon) {
+                const orbDelta = (window.orbitEcon.netCPS) / 10;
+                if (orbDelta !== 0) {
+                    if (!game.orbit) game.orbit = { money: 20, sessionMoney: 20, lifetimeMoney: 20, counts: {}, consumedGridPower: 0 };
+                    game.orbit.money += orbDelta;
+                    if (orbDelta > 0) {
+                        game.orbit.sessionMoney = (game.orbit.sessionMoney || 0) + orbDelta;
+                        game.orbit.lifetimeMoney = (game.orbit.lifetimeMoney || 0) + orbDelta;
+                    }
+                }
+            }
+
             updateUI();
         }, 100);
+
+        // Секундный таймер проверки кулдауна квестов
+        setInterval(() => {
+            checkQuestsCooldown();
+
+            // Если открыта вкладка с контрактами, обновляем цифры секунд в реальном времени
+            if (activeTab === 'achievements' && goalsSubTab === 'quests' && game.quests) {
+                const now = Date.now();
+                document.querySelectorAll('.quest-timer-slot').forEach(el => {
+                    const slotIdx = el.dataset.slot;
+                    const q = game.quests[slotIdx];
+                    if (q && q.cooldownUntil && now < q.cooldownUntil) {
+                        const leftSec = Math.ceil((q.cooldownUntil - now) / 1000);
+                        el.innerText = `Доступно через: ${formatTimeSpan(leftSec)}`;
+                    }
+                });
+            }
+        }, 1000);
 
         let clock = new THREE.Clock();
         let sparkFrameCounter = 0;
