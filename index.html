@@ -54,7 +54,7 @@
         }
     </style>
 </head>
-<body id"app-body" class="h-screen w-screen relative overflow-hidden">
+<body id = "app-body" class="h-screen w-screen relative overflow-hidden">
 
     <div id="canvas-container"></div>
 
@@ -529,7 +529,15 @@
             if (msg) msg.innerText = '';
         }
 
-        let usedPromoList = JSON.parse(localStorage.getItem('cyberspire_promos') || '[]');
+        let usedPromoList = [];
+        try {
+            usedPromoList = JSON.parse(localStorage.getItem('cyberspire_promos') || '[]');
+            if (!Array.isArray(usedPromoList)) usedPromoList = [];
+        } catch (e) {
+            console.warn("Сброс повреждённого списка промокодов:", e);
+            usedPromoList = [];
+        }
+
 
         function applySecretPromo() {
             const input = document.getElementById('author-promo-input');
@@ -1572,6 +1580,10 @@
                     }
                 }
             } catch(e) {}
+            const savedLoc = (typeof currentLocation !== 'undefined' && currentLocation === 'orbit') ? 'orbit' : 'earth';
+            if (typeof switchLocation === 'function') {
+                switchLocation(savedLoc);
+            }
         }
 
         function closeOfflineModal() {
@@ -1623,6 +1635,12 @@
         }
 
         function finishPrestige(gainedCores) {
+            if (currentLocation === 'orbit') {
+                alert("⚠️ Квантовое слияние Ядра доступно только в Цитадели на Земле!");
+                switchLocation('earth');
+                return;
+            }
+
             AudioSys.stopAlarm();
             cleanupQTE();
             if (activeIncident) {
@@ -1656,6 +1674,10 @@
             saveGame();
 
             showToast("Квантовое Слияние!", `Получено ядер сингулярности: +${gainedCores} ⚛️`, "gold");
+
+            if (typeof updateGemsUI === 'function') updateGemsUI();
+            if (typeof updateDailyBonusButtonStatus === 'function') updateDailyBonusButtonStatus();
+            if (typeof updateUI === 'function') updateUI();
         }
 
         function resetGame() {
@@ -2580,7 +2602,8 @@
 
             const prestigeClickMultiplier = 1 + (game.prestigeUpgrades.q_click * 0.2);
             const vipMultiplier = game.vipUpgrades.permX2 ? 2 : 1;
-            const clickVal = 1 * currentMultiplier * prestigeClickMultiplier * vipMultiplier * (econ.isBlackout ? 0.2 : 1);
+            const activeEcon = (currentLocation === 'orbit' && window.orbitEcon) ? window.orbitEcon : econ;
+            const clickVal = 1 * currentMultiplier * prestigeClickMultiplier * vipMultiplier * (activeEcon.isBlackout ? 0.2 : 1);
             
                         const isOrbit = (currentLocation === 'orbit');
             const curSym = isOrbit ? ' ₡' : ' $';
@@ -2776,7 +2799,12 @@
         function getAchievementProgress(ach) {
             let current = 0;
             if (ach.type === 'clicks') current = game.stats.totalClicks || 0;
-            else if (ach.type === 'servers') current = game.counts['i1'] || 0;
+            else if (ach.type === 'servers') {
+                const earthServers = (game.counts && game.counts['i1']) || 0;
+                const orbitServers = (game.orbit && game.orbit.counts) ? (game.orbit.counts['sat_repeater'] || 0) : 0;
+                current = earthServers + orbitServers;
+            }
+
             else if (ach.type === 'mult') current = currentMultiplier;
             else if (ach.type === 'floors') {
                 const total = Object.values(game.counts).reduce((a, b) => a + b, 0);
