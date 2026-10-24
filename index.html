@@ -1403,8 +1403,9 @@
 
         function exchangeGridPowerForGems(gemAmount) {
             const requiredPower = gemAmount * 500;
-            const powerAfter = econ.totalPowerGen - requiredPower;
-            const willCauseBlackout = powerAfter < econ.totalPowerUsed;
+            const curEcon = (currentLocation === 'orbit' && window,orbitEcon) ? window.orbitEcon : econ;
+            const powerAfter = curEcon.totalPowerGen - requiredPower;
+            const willCauseBlackout = powerAfter < curEcon.totalPowerUsed;
 
             if (willCauseBlackout) {
                 const confirmed = confirm(
@@ -1418,7 +1419,13 @@
             }
 
             AudioSys.play('buy', 0.5);
-            game.consumedGridPower = (game.consumedGridPower || 0) + requiredPower;
+
+            if (currentLocation === 'orbit' && game.orbit) {
+                game.orbit.consumedGridPower = (game.orbit.consumedGridPower || 0) + requiredPower;
+            } else {
+                game.consumedGridPower = (game.consumedGridPower || 0) + requiredPower;
+            }
+
             game.stats.gemsSynthesized = (game.stats.gemsSynthesized || 0) + gemAmount;
             addGems(gemAmount, `Синтез из энергосети`);
             calculateEconomy();
@@ -1581,6 +1588,7 @@
                 }
             } catch(e) {}
             const savedLoc = (typeof currentLocation !== 'undefined' && currentLocation === 'orbit') ? 'orbit' : 'earth';
+            currentLocation = null;
             if (typeof switchLocation === 'function') {
                 switchLocation(savedLoc);
             }
@@ -1611,6 +1619,18 @@
         }
 
         function triggerPrestige() {
+            if (currentLocation === 'orbit') {
+                if (typeof showToast === 'function') {
+                    showToast("⚠️ Слияние Ядра доступно только в Цитадели на Земле!", "warning");
+                } else {
+                    alert("⚠️ Квантовое слияние Ядра доступно только в Цитадели на Земле!");
+                }
+                return;
+            }
+
+            isPrestiging = true;
+            Haptics.prestige();
+
             if (isPrestiging) return;
             const coresToGain = getPendingCores();
             if (coresToGain <= 0) {
@@ -1636,7 +1656,8 @@
 
         function finishPrestige(gainedCores) {
             if (currentLocation === 'orbit') {
-                alert("⚠️ Квантовое слияние Ядра доступно только в Цитадели на Земле!");
+                isPrestiging = false;
+                if (typeof baseRoot !== 'undefined') baseRoot.scale.set(1, 1, 1);
                 switchLocation('earth');
                 return;
             }
@@ -1849,22 +1870,32 @@
 
             AudioSys.stopAlarm();
 
-            const penalty = Math.max(15, Math.floor(Math.abs(game.money) * 0.15));
-            game.money -= penalty;
+            const activeMoney = (currentLocation === 'orbit' && game.orbit) ? (game.orbit.money || 0) : game.money;
+            const penalty = Math.max(15, Math.floor(Math.abs(activeMoney) * 0.15));
+
+            if (currentLocation === 'orbit' && game.orbit) {
+                game.orbit.money = Math.max(0, (game.orbit.money || 0) - penalty);
+            } else {
+                game.money = Math.max(0, game.money - penalty);
+            }
 
             Haptics.alarm();
             document.getElementById('app-body').classList.add('shake');
             setTimeout(() => document.getElementById('app-body').classList.remove('shake'), 400);
 
-            showToast("Взлом успешен!", `Потери: -${formatNumber(penalty)} $`, 'danger');
+            const curSym = (currentLocation === 'orbit') ? 'КР' : '$';
+            showToast("Взлом успешен!", `Потери: -${formatNumber(penalty)} ${curSym}`, 'danger');
             updateMultiplierVisuals();
             updateUI();
         }
 
         setInterval(() => {
-            if (Math.random() < 0.35 && Object.values(game.counts).some(v => v > 0)) {
+            const hasBuildings = Object.values(game.counts).some(v => v > 0) || 
+                     (game.orbit?.counts && Object.values(game.orbit.counts).some(v => v > 0));
+            if (Math.random() < 0.35 && hasBuildings) {
                 triggerRandomIncident();
-            }
+        }
+
         }, 36000);
 
         const THEMES = [
